@@ -1,6 +1,6 @@
 # Agent guide — MiniPHP
 
-This document is for humans and coding agents working in this repo. It summarizes how to run the app, where security lives, and the conventions you must follow when adding routes, forms, views, or scripts.
+This document is for humans and coding agents working in this repo. It summarizes how to run the app, how database migrations work, where security lives, and the conventions you must follow when adding routes, forms, views, or scripts.
 
 ## Stack and layout
 
@@ -8,7 +8,7 @@ This document is for humans and coding agents working in this repo. It summarize
 - **Front controller:** `public/index.php` → `bootstrap/app.php` → `routes/web.php`.
 - **MVC:** `app/Controllers`, `app/Models`, `app/Views`; core in `framework/`.
 - **Config:** `config/app.php` (app, database, session, auth, security).
-- **DB:** SQLite at `storage/database.sqlite`; schema applied on every bootstrap via `database/migrate.php`.
+- **DB:** SQLite at `storage/database.sqlite`; versioned migrations in `database/migrations/`; applied on bootstrap via `database/migrate.php` or manually with `php bin/migrate.php`.
 
 ```
 public/          Document root (only web-exposed tree)
@@ -17,8 +17,9 @@ config/          Configuration
 routes/          Route definitions
 framework/       Router, Request, View, CSRF, Auth, security headers, tests
 app/             Application code
-database/        Migrations (idempotent CREATE IF NOT EXISTS)
+database/        Migration runner + `migrations/*.php` (up only)
 tests/           Unit + feature tests (see tests/README.md)
+bin/migrate.php  Apply pending migrations
 bin/test.php     Test runner entry
 ```
 
@@ -38,7 +39,17 @@ Open http://localhost:8000/. Guests are redirected to login; register or log in 
 
 **Apache:** point the vhost document root at `public/`; `public/.htaccess` rewrites to `index.php`.
 
-**Schema changes:** if migrations fail on an old DB, delete `storage/database.sqlite` and reload so tables are recreated.
+**Schema changes:** see [Database migrations](#database-migrations) below.
+
+### Run migrations
+
+From the project root (uses `config/app.php` → `storage/database.sqlite`):
+
+```cmd
+php bin\migrate.php
+```
+
+Prints each applied filename, or `Nothing to migrate.` when the database is current. Safe to run repeatedly.
 
 ### Run tests
 
@@ -58,6 +69,122 @@ Tests use in-memory SQLite (`config/testing.php`). Feature tests extend `Tests\S
 5. `Response::send()`
 
 When adding behavior, prefer extending existing patterns in `ItemController`, `AuthController`, and `routes/web.php` rather than new abstractions.
+
+---
+
+## Database migrations
+
+Schema is **versioned** and **up-only** (no `down` / rollback commands). Each change is a PHP file under `database/migrations/` that runs once per database and is recorded in a `migrations` table.
+
+### Layout
+
+| Piece | Role |
+|--------|------|
+| `database/migrations/*.php` | One file per schema change; filename is the migration identity |
+| `framework/Migrations/Migrator.php` | Discovers files, runs pending `up` steps, records history |
+| `database/migrate.php` | Thin wrapper: `Migrator::fromPath(...)->up()` on the **current** PDO connection |
+| `bin/migrate.php` | CLI: load config, connect to file DB, run pending migrations |
+
+There is no separate migration config: the database path comes from `config/app.php` (`database.path` → `storage/database.sqlite`).
+
+### When migrations run
+
+| Context | How |
+|---------|-----|
+| Web / local app | `bootstrap/app.php` creates `App` (which calls `Database::connect()`), then `require database/migrate.php` |
+| Tests | `tests/bootstrap.php` and `InteractsWithDatabase::refreshDatabase()` connect first (in-memory SQLite via `config/testing.php`), then require `database/migrate.php` |
+| Manual / deploy | `php bin\migrate.php` connects using `config/app.php` and migrates the file database |
+
+**Important:** `database/migrate.php` does **not** load config or connect. It only uses `Database::pdo()`. The caller must connect first so tests stay on `:memory:` and the app uses the right path.
+
+### Execution order and tracking
+
+1. `Migrator` ensures the `migrations` table exists.
+2. All `database/migrations/*.php` files are collected and sorted by **filename** (`SORT_STRING`). Use a zero-padded numeric prefix: `001_…`, `002_…`, `010_…`.
+3. Any filename not yet in `migrations.migration` is pending.
+4. Each pending file is `require`d; it **must** return a `callable(PDO $pdo): void`.
+5. That callable runs inside a **transaction**; on success a row is inserted with the **basename** (e.g. `004_add_priority.php`).
+6. Failed migrations roll back and throw `RuntimeException` with the file name.
+
+`migrations` table (created automatically):
+
+```sql
+CREATE TABLE migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    migration TEXT NOT NULL UNIQUE,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+There is **no** `down` migration: to undo a change in development, restore a backup or delete `storage/database.sqlite` and re-run all migrations from scratch.
+
+### Writing a migration file
+
+Naming: `NNN_short_snake_case.php` where `NNN` sorts after existing files. Never rename a file after it has been applied on any environment—the stored name is the filename.
+
+Template:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+return static function (PDO $pdo): void {
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS example (
+    id INTEGER PRIMARY KEY AUTOINCREMENT
+)
+SQL);
+};
+```
+
+Guidelines:
+
+- **Return** a `static function (PDO $pdo): void { ... }` (or any callable accepting `PDO`). Do not run SQL at file load time outside the callable.
+- Prefer **idempotent DDL** where SQLite allows it (`CREATE TABLE IF NOT EXISTS`). The migrator will not re-run the file once recorded, but idempotency helps local debugging if you reset the `migrations` table by mistake.
+- Use `$pdo->exec()` for static DDL; use **prepared statements** if you ever bind values (unusual in migrations).
+- For **additive** changes on databases that might predate a column, check `PRAGMA table_info(...)` and no-op if already applied (see `003_add_user_id_to_items.php`).
+- Do **not** concatenate user input into SQL in migrations.
+- Do **not** edit the body of a migration that has already shipped; add a new numbered file instead.
+
+After adding a file locally:
+
+```cmd
+php bin\migrate.php
+php bin\test.php
+```
+
+### Agent checklist (new schema change)
+
+1. Add `database/migrations/NNN_description.php` with the callable pattern above.
+2. Update models/controllers/views if the app must use the new columns/tables.
+3. Run `php bin\migrate.php` on your dev database.
+4. Run `php bin\test.php` (migrations run automatically in test bootstrap).
+5. Commit the new migration file with application code in the same change when possible.
+
+### Testing
+
+- Feature/unit tests get a fresh in-memory DB per run; `database/migrate.php` applies every migration file that is not yet recorded (typically all of them on empty memory).
+- `tests/Unit/MigratorTest.php` covers “run pending once, second `up()` is empty” using a temp directory of fake migration files.
+
+To exercise migration logic in isolation, use `Migrator::fromPath($pdo, $path)` in a test after `Database::connect()`.
+
+### Troubleshooting
+
+| Problem | What to do |
+|---------|------------|
+| `Migration … failed` | Fix the SQL in the **new** file or add a follow-up migration; check CLI output for the wrapped exception message |
+| Old/corrupt `storage/database.sqlite` | Stop the server, delete the file, run `php bin\migrate.php`, restart |
+| Migration ran locally but not on server | Run `php bin\migrate.php` in deploy; ensure the new `.php` file is deployed |
+| Renamed or deleted an applied migration file | Avoid—history still references the old name; restore the file or fix the `migrations` table manually |
+| Column already exists | Use `PRAGMA table_info` guard or split into a safe additive migration |
+
+### Do not
+
+- Put one-off schema SQL only in `database/migrate.php`—add a file under `database/migrations/`.
+- Change or delete applied migration files in git history without a deliberate DB repair plan.
+- Call `database/migrate.php` before `Database::connect()`.
+- Assume `bin/migrate.php` runs during tests (tests use `migrate.php` on the in-memory connection, not the CLI entry).
 
 ---
 
@@ -223,6 +350,10 @@ Script stack resets at the start of each `View::render()` call.
 3. Add a view with `View::csrfField()` in the form.
 4. Add `tests/Feature/...` covering success, validation failure, and CSRF if non-obvious.
 
+### Adding a migration
+
+Follow [Database migrations](#database-migrations): new file under `database/migrations/`, callable returns `up` SQL, then `php bin\migrate.php` and `php bin\test.php`.
+
 ### Adding a view
 
 - Extend layout via `$this->render('template', $data)` on `Controller`.
@@ -257,6 +388,10 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Page scripts | `View::script()` / `scriptStart`/`scriptEnd` |
 | Auth guard | `Authenticate` / `GuestOnly` middleware |
 | Run app | `php -S localhost:8000 -t public public/router.php` |
+| Run migrations (CLI) | `php bin\migrate.php` |
+| Migration files | `database/migrations/NNN_name.php` |
+| Migrator / runner | `framework/Migrations/Migrator.php`, `database/migrate.php` |
+| Auto-migrate on boot | `bootstrap/app.php` → `database/migrate.php` |
 | Run tests | `php bin\test.php` |
 | Human-oriented overview | `README.md` |
 | Test layout | `tests/README.md` |

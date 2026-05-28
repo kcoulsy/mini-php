@@ -16,12 +16,13 @@ config/          Configuration
 routes/          Route definitions
 framework/       Framework core (+ framework/Testing for test helpers)
 tests/           Unit & feature tests (see tests/README.md)
+bin/migrate.php  Apply pending database migrations
 bin/test.php     Run the test suite
 app/
   Controllers/   HTTP handlers
   Models/        Data access
   Views/         Templates
-database/        Schema migration
+database/        Migrations (`migrations/*.php`, up only)
 storage/         SQLite database file
 ```
 
@@ -35,7 +36,13 @@ php -S localhost:8000 -t public public/router.php
 
 Open [http://localhost:8000/](http://localhost:8000/) — guests are sent to login; register or log in to manage items.
 
-If you upgraded from an older schema and see database errors, delete `storage/database.sqlite` and reload the app so migrations can recreate tables.
+Apply schema changes with:
+
+```cmd
+php bin\migrate.php
+```
+
+Migrations also run automatically on app bootstrap. If you hit errors on a very old database file, delete `storage/database.sqlite` and run `php bin\migrate.php` again.
 
 ### Apache
 
