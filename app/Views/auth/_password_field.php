@@ -7,10 +7,11 @@ use Framework\View;
  * @var string $label
  * @var string $autocomplete
  * @var bool $required
+ * @var array<string, list<string>> $errors
  */
 $requiredAttr = $required ? ' required' : '';
 ?>
-<label>
+<label class="<?= View::hasFieldErrors($errors, $name) ? 'label-invalid' : '' ?>">
     <?= $label ?>
     <span class="password-field">
         <input
@@ -27,4 +28,5 @@ $requiredAttr = $required ? ' required' : '';
             aria-pressed="false"
         >Show</button>
     </span>
+    <?php View::fieldErrors($errors, $name); ?>
 </label>

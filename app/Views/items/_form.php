@@ -3,7 +3,7 @@
 use Framework\View;
 
 /**
- * @var list<string> $errors
+ * @var array<string, list<string>> $errors
  * @var array{title: string, description: string} $old
  * @var string $formAction
  * @var string $cancelHref
@@ -45,27 +45,23 @@ $existingJson = json_encode($existingFiles, JSON_HEX_TAG | JSON_HEX_APOS | JSON_
 
 <link rel="stylesheet" href="/assets/filepond/filepond.min.css">
 
-<?php if ($errors !== []): ?>
-    <ul class="errors">
-        <?php foreach ($errors as $error): ?>
-            <li><?= $error ?></li>
-        <?php endforeach; ?>
-    </ul>
-<?php endif; ?>
-
 <form method="post" action="<?= $formAction ?>" class="card form-card" enctype="multipart/form-data">
     <?= View::csrfField() ?>
-    <label>
+    <?php require dirname(__DIR__) . '/_form_errors.php'; ?>
+
+    <label class="<?= View::hasFieldErrors($errors, 'title') ? 'label-invalid' : '' ?>">
         Title
         <input type="text" name="title" value="<?= $old['title'] ?>" maxlength="120" required>
+        <?php View::fieldErrors($errors, 'title'); ?>
     </label>
 
-    <label>
+    <label class="<?= View::hasFieldErrors($errors, 'description') ? 'label-invalid' : '' ?>">
         Description
         <textarea name="description" rows="6" maxlength="2000"><?= $old['description'] ?></textarea>
+        <?php View::fieldErrors($errors, 'description'); ?>
     </label>
 
-    <label>
+    <label class="<?= View::hasFieldErrors($errors, 'attachments') ? 'label-invalid' : '' ?>">
         Attachments
         <input
             type="file"
@@ -74,6 +70,7 @@ $existingJson = json_encode($existingFiles, JSON_HEX_TAG | JSON_HEX_APOS | JSON_
             multiple
             data-existing-files="<?= View::e($existingJson) ?>"
         >
+        <?php View::fieldErrors($errors, 'attachments'); ?>
     </label>
 
     <div id="removed-attachment-ids"></div>

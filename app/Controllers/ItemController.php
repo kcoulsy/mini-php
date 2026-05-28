@@ -11,6 +11,7 @@ use Framework\Controller;
 use Framework\FileStorage;
 use Framework\Request;
 use Framework\Response;
+use Framework\Validator;
 
 /**
  * @phpstan-import-type ItemRow from App\Models\Item
@@ -65,17 +66,19 @@ final class ItemController extends Controller
 
   public function store(Request $request): Response
   {
-    [$title, $description, $errors] = $this->validate($request);
-    $uploadErrors = $this->validateUploads($request);
+    $v = $this->itemValidator($request);
+    $errors = $this->mergeAttachmentErrors($v->errors(), $this->validateUploads($request));
 
-    if ($errors !== [] || $uploadErrors !== []) {
+    if ($v->fails() || isset($errors['attachments'])) {
       return $this->render('items/create', $this->createFormData(
-        array_merge($errors, $uploadErrors),
-        $title,
-        $description,
+        $errors,
+        (string) $v->get('title'),
+        (string) $v->get('description'),
       ));
     }
 
+    $title = (string) $v->get('title');
+    $description = (string) $v->get('description');
     $itemId = Item::create($title, $description, $this->userId());
     $fileErrors = ItemAttachment::createMany(
       $itemId,
@@ -88,7 +91,11 @@ final class ItemController extends Controller
     if ($fileErrors !== []) {
       Item::delete($itemId, $this->userId(), $this->storage);
 
-      return $this->render('items/create', $this->createFormData($fileErrors, $title, $description));
+      return $this->render('items/create', $this->createFormData(
+        $this->mergeAttachmentErrors([], $fileErrors),
+        $title,
+        $description,
+      ));
     }
 
     $this->setFlash('Item created.');
@@ -117,13 +124,20 @@ final class ItemController extends Controller
       return Response::html('Item not found.', 404);
     }
 
-    [$title, $description, $errors] = $this->validate($request);
-    $uploadErrors = $this->validateUploads($request);
+    $v = $this->itemValidator($request);
+    $errors = $this->mergeAttachmentErrors($v->errors(), $this->validateUploads($request));
 
-    if ($errors !== [] || $uploadErrors !== []) {
-      return $this->render('items/edit', $this->editFormData($item, array_merge($errors, $uploadErrors), $title, $description));
+    if ($v->fails() || isset($errors['attachments'])) {
+      return $this->render('items/edit', $this->editFormData(
+        $item,
+        $errors,
+        (string) $v->get('title'),
+        (string) $v->get('description'),
+      ));
     }
 
+    $title = (string) $v->get('title');
+    $description = (string) $v->get('description');
     Item::update($itemId, $userId, $title, $description);
     ItemAttachment::deleteIds($itemId, $userId, $this->removedAttachmentIds($request), $this->storage);
 
@@ -136,7 +150,12 @@ final class ItemController extends Controller
     );
 
     if ($fileErrors !== []) {
-      return $this->render('items/edit', $this->editFormData($item, $fileErrors, $title, $description));
+      return $this->render('items/edit', $this->editFormData(
+        $item,
+        $this->mergeAttachmentErrors([], $fileErrors),
+        $title,
+        $description,
+      ));
     }
 
     $this->setFlash('Item updated.');
@@ -221,7 +240,7 @@ final class ItemController extends Controller
   }
 
   /**
-   * @param list<string> $errors
+   * @param array<string, list<string>> $errors
    * @return array<string, mixed>
    */
   private function createFormData(
@@ -242,7 +261,7 @@ final class ItemController extends Controller
 
   /**
    * @param ItemRow $item
-   * @param list<string> $errors
+   * @param array<string, list<string>> $errors
    * @return array<string, mixed>
    */
   private function editFormData(
@@ -267,24 +286,32 @@ final class ItemController extends Controller
     ];
   }
 
-  /** @return array{0: string, 1: string, 2: list<string>} */
-  private function validate(Request $request): array
+  private function itemValidator(Request $request): Validator
   {
-    $title = trim((string) $request->input('title', ''));
-    $description = trim((string) $request->input('description', ''));
-    $errors = [];
+    return Validator::make($request->all(), [
+      'title' => 'trim|required|max:120',
+      'description' => 'trim|max:2000',
+    ], [
+      'title.required' => 'Title is required.',
+      'title.max' => 'Title must be 120 characters or fewer.',
+      'description.max' => 'Description must be 2000 characters or fewer.',
+    ]);
+  }
 
-    if ($title === '') {
-      $errors[] = 'Title is required.';
-    } elseif (mb_strlen($title) > 120) {
-      $errors[] = 'Title must be 120 characters or fewer.';
+  /**
+   * @param array<string, list<string>> $errors
+   * @param list<string> $attachmentErrors
+   * @return array<string, list<string>>
+   */
+  private function mergeAttachmentErrors(array $errors, array $attachmentErrors): array
+  {
+    if ($attachmentErrors === []) {
+      return $errors;
     }
 
-    if (mb_strlen($description) > 2000) {
-      $errors[] = 'Description must be 2000 characters or fewer.';
-    }
+    $errors['attachments'] = array_merge($errors['attachments'] ?? [], $attachmentErrors);
 
-    return [$title, $description, $errors];
+    return $errors;
   }
 
   private function setFlash(string $message): void

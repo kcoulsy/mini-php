@@ -201,6 +201,109 @@ To exercise migration logic in isolation, use `Migrator::fromPath($pdo, $path)` 
 
 ---
 
+## Model and row typing (PHPStan / IDE)
+
+Models return **PDO rows as arrays** at runtime (`?array`, `list<array>`). Typing is **docblock-only** (no record/DTO classes). The goal is accurate static analysis in PHPStan and Intelephense without changing view syntax (`$item['title']` stays).
+
+### Where types live
+
+| Layer | Pattern |
+|--------|---------|
+| **Model** (source of truth) | `@phpstan-type ItemRow array{…}` on the model class; match columns from migrations |
+| **Model fetch methods** | `/** @return ItemRow\|null */` or `/** @return list<ItemRow> */` on `find*` / `all*` |
+| **Framework / controllers** | `@phpstan-import-type ItemRow from App\Models\Item` on the class, then `@return`, `@param` |
+| **Views** | Inline `array{…}` in `@var` (see below)—do **not** rely on `@phpstan-import-type` alone |
+| **View catalog** | [`app/Views/_types.php`](app/Views/_types.php) imports row types for cross-file reference; not loaded at runtime |
+
+Examples: [`app/Models/Item.php`](app/Models/Item.php), [`app/Models/User.php`](app/Models/User.php), [`framework/Auth.php`](framework/Auth.php), [`app/Views/items/index.php`](app/Views/items/index.php).
+
+### Defining a row type (new table)
+
+1. Add migration; note every column and type.
+2. On the model class, define `@phpstan-type XxxRow array{ … }` with **all** selected columns.
+3. Annotate every method that returns a full row from `SELECT *` or an explicit column list.
+
+Template (adjust fields to your table):
+
+```php
+/**
+ * @phpstan-type WidgetRow array{
+ *     id: int|string,
+ *     name: string,
+ *     user_id: int|string,
+ *     created_at: string,
+ *     updated_at: string
+ * }
+ */
+final class Widget
+{
+    /** @return WidgetRow|null */
+    public static function findForUser(int $id, int $userId): ?array
+    {
+        // ...
+    }
+}
+```
+
+### SQLite / PDO: use `int|string` for integers
+
+`PDO::FETCH_ASSOC` often returns integer columns as **strings**. Row types use `int|string` for `id`, foreign keys, and numeric columns (e.g. `size_bytes`). Application code may still cast: `(int) $row['id']`.
+
+### Controllers and framework
+
+`@phpstan-import-type` works here: imported aliases expand to array shapes for `@param` / `@return`.
+
+```php
+/**
+ * @phpstan-import-type ItemRow from App\Models\Item
+ */
+final class ItemController extends Controller
+{
+    /** @param ItemRow $item */
+    private function editFormData(array $item, ...): array
+```
+
+### Views and Intelephense
+
+**Intelephense does not treat `@phpstan-import-type` aliases as arrays.** If a view has `@var list<ItemRow> $items` or `@var ItemRow $item`, offset access (`$item['id']`) triggers: *Expected type 'array\|string\|ArrayAccess'. Found 'ItemRow'.*
+
+**Fix:** use a standard `@var` with an **inline** array shape (copy fields from the model’s `@phpstan-type`). PHPStan accepts the same inline shape.
+
+```php
+/**
+ * @var list<array{
+ *     id: int|string,
+ *     title: string,
+ *     description: string,
+ *     user_id: int|string,
+ *     created_at: string,
+ *     updated_at: string
+ * }> $items
+ */
+```
+
+Do **not** add `@phpstan-var list<ItemRow>` alongside `@var list<array{…}>` in views—some tools prefer the PHPStan tag and the IDE error returns.
+
+When you add a column in a migration, update **both** the model `@phpstan-type` and every view inline shape that lists columns.
+
+### Agent checklist (new model or column)
+
+1. Add or extend `@phpstan-type XxxRow` on the model (all columns).
+2. Add `@return` on row-returning methods.
+3. Import the type in controllers / `Auth` with `@phpstan-import-type` where parameters or returns use rows.
+4. In views that use `$row['field']`, use **inline** `array{…}` in `@var` (match the model).
+5. Run `php bin\test.php` (runtime unchanged).
+
+Optional later: add `phpstan/phpstan` and `phpstan.neon` to enforce types in CI.
+
+### Do not
+
+- Introduce readonly row classes unless the project explicitly moves to that pattern.
+- Use `@var list<ItemRow>` or `@var ItemRow` in views with only `@phpstan-import-type`—IDEs will not treat them as arrays.
+- Leave `array<string, mixed>` on fetch methods when a row shape is known.
+
+---
+
 ## Security model
 
 Security is layered: global POST CSRF, automatic view escaping, HTTP security headers (including CSP), session-hardened auth, and per-user data scoping in models/controllers.
@@ -295,9 +398,32 @@ Or `<?= View::csrfField() ?>` when `use Framework\View` is in scope.
 - Mutations use **POST** only (no PUT/PATCH routes). Updates: `POST /items/{id}`; deletes: `POST /items/{id}/delete`.
 - `form-action` in CSP is `'self'`; keep `action` paths on the same app origin.
 
+### Validation
+
+Use `Framework\Validator::make($request->all(), $rules, $messages)` in controllers. Rules are pipe strings (`trim|required|max:120`) or arrays mixing rule tokens and custom callables `fn (mixed $value, string $field, array $data): ?string` (return an error message or `null`). Built-in rules: `trim`, `required`, `email`, `max:N`, `min:N`, `confirmed` (on `password` or `password_confirmation`).
+
+```php
+$v = Validator::make($request->all(), [
+    'title' => 'trim|required|max:120',
+], [
+    'title.required' => 'Title is required.',
+]);
+
+if ($v->fails()) {
+    return $this->render('items/create', [
+        'errors' => $v->errors(), // array<string, list<string>>
+        'old' => ['title' => (string) $v->get('title')],
+    ]);
+}
+```
+
+**File uploads:** keep using `UploadValidator::validateMany()`; merge failures into `$errors['attachments']`.
+
+**Views:** pass `$errors` as `array<string, list<string>>`. Use `View::fieldErrors($errors, 'title')` under inputs, `View::hasFieldErrors($errors, 'title')` for `label-invalid`, and `require` `app/Views/_form_errors.php` for `_form`-level messages (e.g. invalid login). Add `tests/Framework/ValidatorTest.php` when changing validator behavior.
+
 ### Validation errors
 
-Controllers re-render forms with `$errors` (list of strings) and `$old` input. Error messages should be plain text from the server, not raw HTML. Field values in `$old` go through normal escaping when echoed in inputs.
+Controllers re-render forms with per-field `$errors` and `$old` input. Error messages should be plain text from the server, not raw HTML. Field values in `$old` go through normal escaping when echoed in inputs.
 
 ### Testing POST from feature tests
 
@@ -399,6 +525,11 @@ Follow [Database migrations](#database-migrations): new file under `database/mig
 - Extend layout via `$this->render('template', $data)` on `Controller`.
 - Use normal keys for user-visible strings; reserve `unsafe_` for layout slots and script HTML only.
 - Use `View::e()` when building attributes manually.
+- For variables passed as DB rows, add `@var` with an **inline** `array{…}` shape (see [Model and row typing](#model-and-row-typing-phpstan--ide)); copy fields from the model’s `@phpstan-type`.
+
+### Typing a new model
+
+Follow [Model and row typing](#model-and-row-typing-phpstan--ide): `@phpstan-type` on the model, `@return` on fetch methods, `@phpstan-import-type` in controllers, inline `array{…}` in views.
 
 ### Changing security behavior
 
@@ -422,6 +553,8 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Task | Location / command |
 |------|---------------------|
 | CSRF field in forms | `View::csrfField()` |
+| Form validation | `Validator::make()` in `framework/Validator.php` |
+| Inline field errors | `View::fieldErrors($errors, 'field')` |
 | POST without token | 403 from `App::handle()` |
 | Escape string | `View::e()` or default `<?= $var ?>` |
 | Raw HTML block | `unsafe_*` view key or `Escaped` |
@@ -438,5 +571,8 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Store upload | `FileStorage::store()` |
 | Framework tests only | `php tests\run.php tests\Framework` |
 | App unit tests only | `php tests\run.php tests\App` |
+| Row type definitions | `@phpstan-type` on `app/Models/*.php` |
+| View row `@var` | Inline `array{…}` in templates (not import aliases) |
+| View type catalog | `app/Views/_types.php` |
 | Human-oriented overview | `README.md` |
 | Test layout | `tests/README.md` |

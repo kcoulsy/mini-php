@@ -1,8 +1,10 @@
 <?php
 
+use Framework\View;
+
 /**
  * @var string $title
- * @var list<string> $errors
+ * @var array<string, list<string>> $errors
  * @var array{email: string} $old
  * @var string $formAction
  */
@@ -12,19 +14,14 @@
     <h1>Log in</h1>
 </section>
 
-<?php if ($errors !== []): ?>
-    <ul class="errors">
-        <?php foreach ($errors as $error): ?>
-            <li><?= $error ?></li>
-        <?php endforeach; ?>
-    </ul>
-<?php endif; ?>
-
 <form method="post" action="<?= $formAction ?>" class="card form-card">
-    <?= \Framework\View::csrfField() ?>
-    <label>
+    <?= View::csrfField() ?>
+    <?php require dirname(__DIR__) . '/_form_errors.php'; ?>
+
+    <label class="<?= View::hasFieldErrors($errors, 'email') ? 'label-invalid' : '' ?>">
         Email
         <input type="email" name="email" value="<?= $old['email'] ?>" required autocomplete="email">
+        <?php View::fieldErrors($errors, 'email'); ?>
     </label>
 
     <?php

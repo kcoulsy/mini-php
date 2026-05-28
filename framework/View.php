@@ -191,4 +191,33 @@ final class View
   {
     return '<input type="hidden" name="' . self::e(Csrf::FIELD) . '" value="' . self::e(Csrf::token()) . '">';
   }
+
+  /**
+   * @param array<string, list<string>> $errors
+   */
+  public static function fieldErrors(array $errors, string $field): void
+  {
+    $messages = $errors[$field] ?? [];
+
+    if ($messages === []) {
+      return;
+    }
+
+    echo '<ul class="field-errors">';
+
+    foreach ($messages as $message) {
+      $text = $message instanceof Escaped ? $message->raw() : (string) $message;
+      echo '<li>' . self::e($text) . '</li>';
+    }
+
+    echo '</ul>';
+  }
+
+  /**
+   * @param array<string, list<string>> $errors
+   */
+  public static function hasFieldErrors(array $errors, string $field): bool
+  {
+    return ($errors[$field] ?? []) !== [];
+  }
 }

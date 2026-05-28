@@ -10,6 +10,7 @@ use Framework\Controller;
 use Framework\Request;
 use Framework\Response;
 use Framework\Session;
+use Framework\Validator;
 
 final class AuthController extends Controller
 {
@@ -28,17 +29,27 @@ final class AuthController extends Controller
 
   public function login(Request $request): Response
   {
-    [$email, $password, $errors] = $this->validateLogin($request);
+    $v = Validator::make($request->all(), [
+      'email' => 'trim|required|email',
+      'password' => 'required',
+    ], [
+      'email.required' => 'A valid email is required.',
+      'email.email' => 'A valid email is required.',
+      'password.required' => 'Password is required.',
+    ]);
 
-    if ($errors !== []) {
-      return $this->render('auth/login', $this->loginFormData($errors, $email));
+    if ($v->fails()) {
+      return $this->render('auth/login', $this->loginFormData($v->errors(), (string) $v->get('email')));
     }
 
+    $email = (string) $v->get('email');
+    $password = (string) $v->get('password');
+
     if (!Auth::attempt($email, $password)) {
-      return $this->render('auth/login', $this->loginFormData(
-        ['Invalid credentials.'],
-        $email,
-      ));
+      $errors = $v->errors();
+      $errors['_form'][] = 'Invalid credentials.';
+
+      return $this->render('auth/login', $this->loginFormData($errors, $email));
     }
 
     return $this->redirect($this->intendedUrl());
@@ -51,13 +62,39 @@ final class AuthController extends Controller
 
   public function register(Request $request): Response
   {
-    [$email, $password, $name, $errors] = $this->validateRegister($request);
+    $minLength = (int) ($this->authConfig['password_min_length'] ?? 8);
+    $v = Validator::make($request->all(), [
+      'email' => [
+        'trim',
+        'required',
+        'email',
+        static fn (mixed $value): ?string => is_string($value) && User::emailExists($value)
+          ? 'Email is already taken.'
+          : null,
+      ],
+      'password' => "required|min:{$minLength}",
+      'password_confirmation' => 'confirmed',
+      'name' => 'trim',
+    ], [
+      'email.required' => 'A valid email is required.',
+      'email.email' => 'A valid email is required.',
+      'password.min' => "Password must be at least {$minLength} characters.",
+      'password_confirmation.confirmed' => 'Password confirmation does not match.',
+    ]);
 
-    if ($errors !== []) {
-      return $this->render('auth/register', $this->registerFormData($errors, $email, $name));
+    if ($v->fails()) {
+      return $this->render('auth/register', $this->registerFormData(
+        $v->errors(),
+        (string) $v->get('email'),
+        (string) $v->get('name'),
+      ));
     }
 
-    $userId = User::create($email, $password, $name);
+    $userId = User::create(
+      (string) $v->get('email'),
+      (string) $v->get('password'),
+      (string) $v->get('name'),
+    );
     Auth::login($userId);
 
     return $this->redirect('/items');
@@ -71,7 +108,7 @@ final class AuthController extends Controller
   }
 
   /**
-   * @param list<string> $errors
+   * @param array<string, list<string>> $errors
    * @return array<string, mixed>
    */
   private function loginFormData(array $errors = [], string $email = ''): array
@@ -85,7 +122,7 @@ final class AuthController extends Controller
   }
 
   /**
-   * @param list<string> $errors
+   * @param array<string, list<string>> $errors
    * @return array<string, mixed>
    */
   private function registerFormData(
@@ -99,51 +136,6 @@ final class AuthController extends Controller
       'old' => ['email' => $email, 'name' => $name],
       'formAction' => '/register',
     ];
-  }
-
-  /** @return array{0: string, 1: string, 2: list<string>} */
-  private function validateLogin(Request $request): array
-  {
-    $email = trim((string) $request->input('email', ''));
-    $password = (string) $request->input('password', '');
-    $errors = [];
-
-    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-      $errors[] = 'A valid email is required.';
-    }
-
-    if ($password === '') {
-      $errors[] = 'Password is required.';
-    }
-
-    return [$email, $password, $errors];
-  }
-
-  /** @return array{0: string, 1: string, 2: string, 3: list<string>} */
-  private function validateRegister(Request $request): array
-  {
-    $email = trim((string) $request->input('email', ''));
-    $password = (string) $request->input('password', '');
-    $confirmation = (string) $request->input('password_confirmation', '');
-    $name = trim((string) $request->input('name', ''));
-    $errors = [];
-    $minLength = (int) ($this->authConfig['password_min_length'] ?? 8);
-
-    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-      $errors[] = 'A valid email is required.';
-    } elseif (User::emailExists($email)) {
-      $errors[] = 'Email is already taken.';
-    }
-
-    if (mb_strlen($password) < $minLength) {
-      $errors[] = "Password must be at least {$minLength} characters.";
-    }
-
-    if ($password !== $confirmation) {
-      $errors[] = 'Password confirmation does not match.';
-    }
-
-    return [$email, $password, $name, $errors];
   }
 
   private function intendedUrl(): string

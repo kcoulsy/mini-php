@@ -2,7 +2,7 @@
 
 /**
  * @var string $title
- * @var list<string> $errors
+ * @var array<string, list<string>> $errors
  * @var array{title: string, description: string} $old
  * @var string $formAction
  * @var string $cancelHref
