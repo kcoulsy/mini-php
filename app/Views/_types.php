@@ -10,12 +10,8 @@ declare(strict_types=1);
  * (e.g. unsafe_content for pre-rendered HTML in the layout, unsafe_scripts for
  * scripts queued via View::script() and emitted before </body>).
  *
- * @phpstan-type ItemRow array{
- *     id: int|string,
- *     title: string,
- *     description: string,
- *     created_at: string,
- *     updated_at: string
- * }
+ * @phpstan-import-type ItemRow from App\Models\Item
+ * @phpstan-import-type ItemAttachmentRow from App\Models\ItemAttachment
+ * @phpstan-import-type UserRow from App\Models\User
  * @phpstan-type FormOld array{title: string, description: string}
  */

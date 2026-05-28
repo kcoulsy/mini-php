@@ -7,9 +7,19 @@ namespace App\Models;
 use Framework\Database;
 use Framework\FileStorage;
 
+/**
+ * @phpstan-type ItemRow array{
+ *     id: int|string,
+ *     title: string,
+ *     description: string,
+ *     user_id: int|string,
+ *     created_at: string,
+ *     updated_at: string
+ * }
+ */
 final class Item
 {
-  /** @return list<array<string, mixed>> */
+  /** @return list<ItemRow> */
   public static function allForUser(int $userId): array
   {
     $stmt = Database::pdo()->prepare(
@@ -20,6 +30,7 @@ final class Item
     return $stmt->fetchAll();
   }
 
+  /** @return ItemRow|null */
   public static function findForUser(int $id, int $userId): ?array
   {
     $stmt = Database::pdo()->prepare(

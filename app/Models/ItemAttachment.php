@@ -9,9 +9,20 @@ use Framework\FileStorage;
 use Framework\UploadedFile;
 use Framework\UploadValidator;
 
+/**
+ * @phpstan-type ItemAttachmentRow array{
+ *     id: int|string,
+ *     item_id: int|string,
+ *     stored_path: string,
+ *     original_name: string,
+ *     mime_type: string,
+ *     size_bytes: int|string,
+ *     created_at: string
+ * }
+ */
 final class ItemAttachment
 {
-  /** @return list<array<string, mixed>> */
+  /** @return list<ItemAttachmentRow> */
   public static function forItem(int $itemId): array
   {
     $stmt = Database::pdo()->prepare(
@@ -22,6 +33,7 @@ final class ItemAttachment
     return $stmt->fetchAll();
   }
 
+  /** @return ItemAttachmentRow|null */
   public static function findForUser(int $attachmentId, int $itemId, int $userId): ?array
   {
     $stmt = Database::pdo()->prepare(
@@ -133,7 +145,7 @@ final class ItemAttachment
     $stmt->execute(['item_id' => $itemId]);
   }
 
-  /** @return array<string, mixed>|null */
+  /** @return ItemAttachmentRow|null */
   private static function findByIdForItem(int $id, int $itemId): ?array
   {
     $stmt = Database::pdo()->prepare(

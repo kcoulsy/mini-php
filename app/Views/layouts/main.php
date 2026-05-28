@@ -4,10 +4,12 @@ use Framework\Auth;
 use Framework\View;
 
 /**
+ * @phpstan-import-type UserRow from App\Models\User
  * @var string $unsafe_content
  * @var string $unsafe_scripts
  * @var string|null $title
  * @var string|null $flash
+ * @var UserRow|null $user
  */
 $user = Auth::user();
 ?>

@@ -6,6 +6,9 @@ namespace Framework;
 
 use App\Models\User;
 
+/**
+ * @phpstan-import-type UserRow from App\Models\User
+ */
 final class Auth
 {
     public static function check(): bool
@@ -26,7 +29,7 @@ final class Auth
         return (int) $_SESSION[Session::USER_KEY];
     }
 
-    /** @return array<string, mixed>|null */
+    /** @return UserRow|null */
     public static function user(): ?array
     {
         $id = self::id();

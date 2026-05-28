@@ -1,8 +1,23 @@
 <?php
 
 /**
- * @var array{id: int|string, title: string, description: string, created_at: string, updated_at: string} $item
- * @var list<array<string, mixed>> $attachments
+ * @var array{
+ *     id: int|string,
+ *     title: string,
+ *     description: string,
+ *     user_id: int|string,
+ *     created_at: string,
+ *     updated_at: string
+ * } $item
+ * @var list<array{
+ *     id: int|string,
+ *     item_id: int|string,
+ *     stored_path: string,
+ *     original_name: string,
+ *     mime_type: string,
+ *     size_bytes: int|string,
+ *     created_at: string
+ * }> $attachments
  */
 
 $title = $item['title'];

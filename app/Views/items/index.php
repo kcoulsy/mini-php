@@ -1,7 +1,14 @@
 <?php
 
 /**
- * @var list<array{id: int|string, title: string, description: string, created_at: string, updated_at: string}> $items
+ * @var list<array{
+ *     id: int|string,
+ *     title: string,
+ *     description: string,
+ *     user_id: int|string,
+ *     created_at: string,
+ *     updated_at: string
+ * }> $items
  * @var string|null $flash
  */
 

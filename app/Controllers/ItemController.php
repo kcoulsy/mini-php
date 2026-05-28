@@ -12,6 +12,9 @@ use Framework\FileStorage;
 use Framework\Request;
 use Framework\Response;
 
+/**
+ * @phpstan-import-type ItemRow from App\Models\Item
+ */
 final class ItemController extends Controller
 {
   private FileStorage $storage;
@@ -238,7 +241,7 @@ final class ItemController extends Controller
   }
 
   /**
-   * @param array<string, mixed> $item
+   * @param ItemRow $item
    * @param list<string> $errors
    * @return array<string, mixed>
    */

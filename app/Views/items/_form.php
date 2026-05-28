@@ -8,7 +8,15 @@ use Framework\View;
  * @var string $formAction
  * @var string $cancelHref
  * @var int|null $itemId
- * @var list<array<string, mixed>> $attachments
+ * @var list<array{
+ *     id: int|string,
+ *     item_id: int|string,
+ *     stored_path: string,
+ *     original_name: string,
+ *     mime_type: string,
+ *     size_bytes: int|string,
+ *     created_at: string
+ * }> $attachments
  */
 
 $itemId = $itemId ?? null;

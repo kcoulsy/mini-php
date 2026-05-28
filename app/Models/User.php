@@ -6,6 +6,16 @@ namespace App\Models;
 
 use Framework\Database;
 
+/**
+ * @phpstan-type UserRow array{
+ *     id: int|string,
+ *     email: string,
+ *     password: string,
+ *     name: string,
+ *     created_at: string,
+ *     updated_at: string
+ * }
+ */
 final class User
 {
     public static function create(string $email, string $password, string $name = ''): int
@@ -22,6 +32,7 @@ final class User
         return (int) Database::pdo()->lastInsertId();
     }
 
+    /** @return UserRow|null */
     public static function find(int $id): ?array
     {
         $stmt = Database::pdo()->prepare('SELECT * FROM users WHERE id = :id LIMIT 1');
@@ -31,6 +42,7 @@ final class User
         return $row === false ? null : $row;
     }
 
+    /** @return UserRow|null */
     public static function findByEmail(string $email): ?array
     {
         $stmt = Database::pdo()->prepare('SELECT * FROM users WHERE email = :email LIMIT 1');
