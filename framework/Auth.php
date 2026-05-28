@@ -64,6 +64,45 @@ final class Auth
         return true;
     }
 
+    public static function role(): ?string
+    {
+        $user = self::user();
+
+        return $user === null ? null : (string) ($user['role'] ?? User::ROLE_STUDENT);
+    }
+
+    public static function isStudent(): bool
+    {
+        return self::role() === User::ROLE_STUDENT;
+    }
+
+    public static function isTeacher(): bool
+    {
+        return self::role() === User::ROLE_TEACHER;
+    }
+
+    public static function isAdmin(): bool
+    {
+        return self::role() === User::ROLE_ADMIN;
+    }
+
+    public static function homePath(): string
+    {
+        return match (self::role()) {
+            User::ROLE_ADMIN => '/admin',
+            User::ROLE_TEACHER => '/teach',
+            default => '/student',
+        };
+    }
+
+    /** @param list<string> $roles */
+    public static function hasRole(string ...$roles): bool
+    {
+        $role = self::role();
+
+        return $role !== null && in_array($role, $roles, true);
+    }
+
     private static function ensureSession(): void
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {

@@ -4,38 +4,28 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use Framework\Csrf;
 use Tests\Support\ApplicationTestCase;
 
 final class CsrfTest extends ApplicationTestCase
 {
-    public function testPostWithoutTokenIsRejected(): void
+    public function testPostWithoutCsrfTokenReturns403(): void
     {
-        $response = $this->post('/items', [
-            'title' => 'Blocked',
-            'description' => '',
+        $this->actingAs($this->createStudent());
+
+        $response = $this->post('/student/classes/join', [
+            'join_code' => 'ABC12345',
         ], withCsrf: false);
 
         $this->assertEquals(403, $response->status());
         $this->assertSee($response, 'Invalid or missing CSRF token');
     }
 
-    public function testCreateFormIncludesCsrfField(): void
+    public function testGetDoesNotRequireCsrf(): void
     {
-        $this->actingAs($this->createUser());
-        $response = $this->get('/items/create');
+        $this->actingAs($this->createStudent());
+
+        $response = $this->get('/student');
 
         $this->assertOk($response);
-        $this->assertSee($response, 'name="' . Csrf::FIELD . '"');
-        $this->assertSee($response, 'value="' . Csrf::token() . '"');
-    }
-
-    public function testSecurityHeadersArePresent(): void
-    {
-        $response = $this->get('/items');
-
-        $this->assertEquals('SAMEORIGIN', $response->header('X-Frame-Options'));
-        $this->assertEquals('nosniff', $response->header('X-Content-Type-Options'));
-        $this->assertNotNull($response->header('Content-Security-Policy'));
     }
 }

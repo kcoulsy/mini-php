@@ -4,18 +4,23 @@ declare(strict_types=1);
 
 namespace Framework\Middleware;
 
+use App\Models\User;
 use Framework\Auth;
 use Framework\Request;
 use Framework\Response;
 
-final class GuestOnly
+final class RequireAdmin
 {
     public function __invoke(Request $request): ?Response
     {
         if (!Auth::check()) {
-            return null;
+            return (new Authenticate())($request);
         }
 
-        return Response::redirect(Auth::homePath());
+        if (!Auth::isAdmin()) {
+            return Response::html('Forbidden.', 403);
+        }
+
+        return null;
     }
 }

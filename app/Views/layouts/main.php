@@ -4,12 +4,19 @@ use Framework\Auth;
 use Framework\View;
 
 /**
- * @phpstan-import-type UserRow from App\Models\User
+ * @var array{
+ *     id: int|string,
+ *     email: string,
+ *     password: string,
+ *     name: string,
+ *     role: string,
+ *     created_at: string,
+ *     updated_at: string
+ * }|null $user
  * @var string $unsafe_content
  * @var string $unsafe_scripts
  * @var string|null $title
  * @var string|null $flash
- * @var UserRow|null $user
  */
 $user = Auth::user();
 ?>
@@ -18,17 +25,16 @@ $user = Auth::user();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Items' ?> · MiniPHP</title>
+    <title><?= $title ?? 'Homework' ?> · Homework</title>
     <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
     <header class="site-header">
         <div class="container">
-            <a href="<?= Auth::check() ? '/items' : '/login' ?>" class="logo">MiniPHP</a>
+            <a href="<?= Auth::check() ? Auth::homePath() : '/login' ?>" class="logo">Homework</a>
             <nav>
                 <?php if (Auth::check() && is_array($user)): ?>
-                    <a href="/items">All items</a>
-                    <a href="/items/create" class="btn btn-primary">New item</a>
+                    <?php require dirname(__DIR__) . '/_nav.php'; ?>
                     <span class="nav-user"><?= View::e((string) ($user['name'] !== '' ? $user['name'] : $user['email'])) ?></span>
                     <form method="post" action="/logout" class="nav-logout">
                         <?= View::csrfField() ?>
@@ -52,7 +58,7 @@ $user = Auth::user();
 
     <footer class="site-footer">
         <div class="container">
-            <small>Pure PHP · front controller · MVC · no packages</small>
+            <small>Homework submission app · MiniPHP</small>
         </div>
     </footer>
 

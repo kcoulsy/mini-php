@@ -35,7 +35,7 @@ From the project root:
 php -S localhost:8000 -t public public/router.php
 ```
 
-Open http://localhost:8000/. Guests are redirected to login; register or log in to use items CRUD.
+Open http://localhost:8000/. Guests are redirected to login; register as a **student** or log in. Teachers/admins are created in `/admin` or via `php bin\make-admin.php`.
 
 **Apache:** point the vhost document root at `public/`; `public/.htaccess` rewrites to `index.php`.
 
@@ -81,7 +81,7 @@ Add or update a test under `tests/Framework/` whenever you change a class in `fr
 4. **Security headers** applied to every response
 5. `Response::send()`
 
-When adding behavior, prefer extending existing patterns in `ItemController`, `AuthController`, and `routes/web.php` rather than new abstractions.
+When adding behavior, prefer extending existing patterns in `StudentController`, `TeacherController`, `Admin/*`, `AuthController`, and `routes/web.php` rather than new abstractions.
 
 ---
 
@@ -369,9 +369,9 @@ Extend CSP in `config/app.php` when adding external scripts, styles, or fonts. T
 - Middleware: `Authenticate` (redirect to `/login`, store intended URL), `GuestOnly` (logged-in users away from login/register).
 - Password rules: `config/app.php` → `auth.password_min_length` (default 8).
 
-### Authorization (multi-tenant items)
+### Authorization (roles and classes)
 
-Items are scoped by `user_id`. Controllers call `Item::findForUser($id, Auth::id())`; another user’s id returns **404**, not 403, to avoid leaking existence. Follow this pattern for any new per-user resources.
+Users have `role`: `student`, `teacher`, or `admin`. Route prefixes use `RequireRole` / `RequireAdmin` middleware. Resource checks live in [`app/Authorization.php`](app/Authorization.php). Wrong resource id → **404**; wrong role on prefix → **403**. Students register publicly; teachers/admins are created in admin UI.
 
 ### PDO / SQL
 
@@ -559,7 +559,11 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Escape string | `View::e()` or default `<?= $var ?>` |
 | Raw HTML block | `unsafe_*` view key or `Escaped` |
 | Page scripts | `View::script()` / `scriptStart`/`scriptEnd` |
-| Auth guard | `Authenticate` / `GuestOnly` middleware |
+| Auth guard | `Authenticate` / `GuestOnly` / `RequireRole` / `RequireAdmin` |
+| Role home URLs | `Auth::homePath()` → `/student`, `/teach`, `/admin` |
+| Authorization checks | `app/Authorization.php` |
+| First admin (CLI) | `php bin\make-admin.php email password "Name"` |
+| Demo seed data | `php bin\seed.php` or `php bin\seed.php --fresh` |
 | Run app | `php -S localhost:8000 -t public public/router.php` |
 | Run migrations (CLI) | `php bin\migrate.php` |
 | Migration files | `database/migrations/NNN_name.php` |

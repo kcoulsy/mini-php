@@ -3,15 +3,11 @@
 declare(strict_types=1);
 
 /**
- * View variable shapes (static analysis reference).
- * Injected by Framework\View::render() via extract().
+ * View type catalog (not loaded at runtime).
  *
- * Strings are auto-escaped on output unless the data key is prefixed with unsafe_
- * (e.g. unsafe_content for pre-rendered HTML in the layout, unsafe_scripts for
- * scripts queued via View::script() and emitted before </body>).
- *
- * @phpstan-import-type ItemRow from App\Models\Item
- * @phpstan-import-type ItemAttachmentRow from App\Models\ItemAttachment
  * @phpstan-import-type UserRow from App\Models\User
- * @phpstan-type FormOld array{title: string, description: string}
+ * @phpstan-import-type SchoolClassRow from App\Models\SchoolClass
+ * @phpstan-import-type AssignmentRow from App\Models\Assignment
+ * @phpstan-import-type SubmissionRow from App\Models\Submission
+ * @phpstan-import-type SubmissionFileRow from App\Models\SubmissionFile
  */

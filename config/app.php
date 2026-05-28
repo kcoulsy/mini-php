@@ -21,6 +21,7 @@ return [
     ],
     'auth' => [
         'password_min_length' => 8,
+        'default_role' => 'student',
     ],
     'uploads' => [
         'path' => dirname(__DIR__) . '/storage/uploads',

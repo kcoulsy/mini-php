@@ -9,14 +9,14 @@ use Tests\Support\ApplicationTestCase;
 
 final class AuthTest extends ApplicationTestCase
 {
-    public function testGuestIsRedirectedFromItemsToLogin(): void
+    public function testGuestIsRedirectedFromStudentToLogin(): void
     {
-        $response = $this->get('/items');
+        $response = $this->get('/student');
 
         $this->assertRedirect($response, '/login');
     }
 
-    public function testRegisterCreatesUserAndRedirectsToItems(): void
+    public function testRegisterCreatesStudentAndRedirectsToStudentHome(): void
     {
         $response = $this->post('/register', [
             'name' => 'Ada',
@@ -25,28 +25,28 @@ final class AuthTest extends ApplicationTestCase
             'password_confirmation' => 'secret123',
         ]);
 
-        $this->assertRedirect($response, '/items');
+        $this->assertRedirect($response, '/student');
 
-        $items = $this->get('/items');
-        $this->assertOk($items);
-        $this->assertSee($items, 'Ada');
+        $home = $this->get('/student');
+        $this->assertOk($home);
+        $this->assertSee($home, 'My classes');
     }
 
     public function testLoginWithValidCredentials(): void
     {
-        $this->createUser('login@example.com', 'password123');
+        $this->createStudent('login@example.com', 'password123');
 
         $response = $this->post('/login', [
             'email' => 'login@example.com',
             'password' => 'password123',
         ]);
 
-        $this->assertRedirect($response, '/items');
+        $this->assertRedirect($response, '/student');
     }
 
     public function testLoginWithInvalidCredentialsShowsGenericError(): void
     {
-        $this->createUser('login@example.com', 'password123');
+        $this->createStudent('login@example.com', 'password123');
 
         $response = $this->post('/login', [
             'email' => 'login@example.com',
@@ -57,19 +57,19 @@ final class AuthTest extends ApplicationTestCase
         $this->assertSee($response, 'Invalid credentials.');
     }
 
-    public function testAuthenticatedUserIsRedirectedFromLoginToItems(): void
+    public function testAuthenticatedStudentRedirectedFromLogin(): void
     {
-        $userId = $this->createUser();
+        $userId = $this->createStudent();
         $this->actingAs($userId);
 
         $response = $this->get('/login');
 
-        $this->assertRedirect($response, '/items');
+        $this->assertRedirect($response, '/student');
     }
 
     public function testLogoutClearsSession(): void
     {
-        $userId = $this->createUser();
+        $userId = $this->createStudent();
         $this->actingAs($userId);
 
         $response = $this->post('/logout');
@@ -77,21 +77,33 @@ final class AuthTest extends ApplicationTestCase
         $this->assertRedirect($response, '/login');
         $this->assertFalse(isset($_SESSION[Session::USER_KEY]));
 
-        $items = $this->get('/items');
-        $this->assertRedirect($items, '/login');
+        $home = $this->get('/student');
+        $this->assertRedirect($home, '/login');
     }
 
     public function testIntendedUrlRedirectAfterLogin(): void
     {
-        $this->createUser('intended@example.com', 'password123');
+        $this->createStudent('intended@example.com', 'password123');
 
-        $this->get('/items/create');
+        $this->get('/student/classes/1');
 
         $response = $this->post('/login', [
             'email' => 'intended@example.com',
             'password' => 'password123',
         ]);
 
-        $this->assertRedirect($response, '/items/create');
+        $this->assertRedirect($response, '/student/classes/1');
+    }
+
+    public function testTeacherRedirectsToTeachAfterLogin(): void
+    {
+        $this->createTeacher('t@example.com', 'password123');
+
+        $response = $this->post('/login', [
+            'email' => 't@example.com',
+            'password' => 'password123',
+        ]);
+
+        $this->assertRedirect($response, '/teach');
     }
 }

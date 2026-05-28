@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Framework\Middleware;
 
+use App\Models\User;
 use Framework\Auth;
 use Framework\Middleware\GuestOnly;
 use Framework\Request;
 use Framework\Session;
-use Framework\Testing\TestCase;
+use Tests\Support\DatabaseTestCase;
 
-final class GuestOnlyTest extends TestCase
+final class GuestOnlyTest extends DatabaseTestCase
 {
     protected function setUp(): void
     {
-        Session::start();
+        parent::setUp();
+        Session::start(['name' => 'test', 'lifetime' => 0]);
         $_SESSION = [];
     }
 
@@ -28,13 +30,14 @@ final class GuestOnlyTest extends TestCase
 
     public function testRedirectsAuthenticatedUsers(): void
     {
-        Auth::login(1);
+        $userId = User::createStudent('guest@example.com', 'password123');
+        Auth::login($userId);
 
         $middleware = new GuestOnly();
         $result = $middleware(Request::from('GET', '/login'));
 
         $this->assertNotNull($result);
         $this->assertEquals(302, $result->status());
-        $this->assertEquals('/items', $result->header('Location'));
+        $this->assertEquals('/student', $result->header('Location'));
     }
 }

@@ -1,6 +1,6 @@
 # MiniPHP
 
-A minimal pure-PHP framework and CRUD demo — no Composer, no packages. Uses a front controller, MVC layout, PDO (SQLite), and a simple router.
+A minimal pure-PHP homework submission app — no Composer, no packages. Students join classes and upload assignments; teachers grade; admins manage users, classes, and overrides.
 
 I wanted to test out composer 2.5 and got carried away and ended up building out a whole framework.
 
@@ -36,7 +36,31 @@ From the project root, using PHP's built-in server:
 php -S localhost:8000 -t public public/router.php
 ```
 
-Open [http://localhost:8000/](http://localhost:8000/) — guests are sent to login; register or log in to manage items.
+Open [http://localhost:8000/](http://localhost:8000/) — guests are sent to login; register as a **student** or log in. Teachers and admins are created in the admin UI (or via CLI below).
+
+### First admin account
+
+After migrating, promote or create an admin:
+
+```cmd
+php bin\make-admin.php admin@example.com yourpassword "Admin Name"
+```
+
+### Demo data (local playtesting)
+
+Load sample users, classes, and assignments (runs pending migrations first):
+
+```cmd
+php bin\seed.php
+```
+
+Re-create demo data from scratch:
+
+```cmd
+php bin\seed.php --fresh
+```
+
+All demo accounts use password `password123` (e.g. `admin@demo.local`, `teacher@demo.local`, `alice@demo.local`). Join codes: `MATH101`, `ENG201`.
 
 Apply schema changes with:
 

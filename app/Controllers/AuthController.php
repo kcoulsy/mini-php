@@ -90,14 +90,14 @@ final class AuthController extends Controller
       ));
     }
 
-    $userId = User::create(
+    $userId = User::createStudent(
       (string) $v->get('email'),
       (string) $v->get('password'),
       (string) $v->get('name'),
     );
     Auth::login($userId);
 
-    return $this->redirect('/items');
+    return $this->redirect(Auth::homePath());
   }
 
   public function logout(Request $request): Response
@@ -151,6 +151,6 @@ final class AuthController extends Controller
       return $intended;
     }
 
-    return '/items';
+    return Auth::homePath();
   }
 }
