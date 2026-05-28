@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Framework\Database;
+use Framework\FileStorage;
 
 final class Item
 {
@@ -61,8 +62,12 @@ final class Item
     return $stmt->rowCount() > 0;
   }
 
-  public static function delete(int $id, int $userId): bool
+  public static function delete(int $id, int $userId, ?FileStorage $storage = null): bool
   {
+    if ($storage !== null) {
+      ItemAttachment::deleteAllForItem($id, $userId, $storage);
+    }
+
     $stmt = Database::pdo()->prepare('DELETE FROM items WHERE id = :id AND user_id = :user_id');
 
     $stmt->execute(['id' => $id, 'user_id' => $userId]);

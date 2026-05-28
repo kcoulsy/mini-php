@@ -284,3 +284,17 @@ h1 {
     border-radius: var(--radius);
     margin-bottom: 1rem;
 }
+
+.h3 {
+    font-size: 1.1rem;
+    margin: 1.25rem 0 0.5rem;
+}
+
+.item-attachments ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.item-attachments li {
+    margin-bottom: 0.35rem;
+}

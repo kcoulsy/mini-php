@@ -2,6 +2,8 @@
 
 A minimal pure-PHP framework and CRUD demo — no Composer, no packages. Uses a front controller, MVC layout, PDO (SQLite), and a simple router.
 
+I wanted to test out composer 2.5 and got carried away and ended up building out a whole framework.
+
 ## Requirements
 
 - PHP 8.2+ (tested on 8.4)

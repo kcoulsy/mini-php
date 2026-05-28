@@ -10,4 +10,6 @@ $config['database'] = [
     'path' => ':memory:',
 ];
 
+$config['uploads']['path'] = sys_get_temp_dir() . '/miniphp-test-uploads-' . getmypid();
+
 return $config;

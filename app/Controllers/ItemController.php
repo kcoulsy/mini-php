@@ -5,19 +5,38 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\Item;
+use App\Models\ItemAttachment;
 use Framework\Auth;
 use Framework\Controller;
+use Framework\FileStorage;
 use Framework\Request;
 use Framework\Response;
 
 final class ItemController extends Controller
 {
+  private FileStorage $storage;
+
+  /** @param array<string, mixed> $uploadConfig */
+  public function __construct(
+    \Framework\View $view,
+    private readonly array $uploadConfig = [],
+  ) {
+    parent::__construct($view);
+    $this->storage = FileStorage::fromConfig($uploadConfig);
+  }
+
   public function index(Request $request): Response
   {
     $userId = $this->userId();
+    $items = Item::allForUser($userId);
+
+    foreach ($items as &$item) {
+      $item['attachment_count'] = count(ItemAttachment::forItem((int) $item['id']));
+    }
+    unset($item);
 
     return $this->render('items/index', [
-      'items' => Item::allForUser($userId),
+      'items' => $items,
       'flash' => $this->flash(),
     ]);
   }
@@ -30,7 +49,10 @@ final class ItemController extends Controller
       return Response::html('Item not found.', 404);
     }
 
-    return $this->render('items/show', ['item' => $item]);
+    return $this->render('items/show', [
+      'item' => $item,
+      'attachments' => ItemAttachment::forItem((int) $item['id']),
+    ]);
   }
 
   public function create(Request $request): Response
@@ -41,12 +63,31 @@ final class ItemController extends Controller
   public function store(Request $request): Response
   {
     [$title, $description, $errors] = $this->validate($request);
+    $uploadErrors = $this->validateUploads($request);
 
-    if ($errors !== []) {
-      return $this->render('items/create', $this->createFormData($errors, $title, $description));
+    if ($errors !== [] || $uploadErrors !== []) {
+      return $this->render('items/create', $this->createFormData(
+        array_merge($errors, $uploadErrors),
+        $title,
+        $description,
+      ));
     }
 
-    Item::create($title, $description, $this->userId());
+    $itemId = Item::create($title, $description, $this->userId());
+    $fileErrors = ItemAttachment::createMany(
+      $itemId,
+      $request->files('attachments'),
+      $this->userId(),
+      $this->uploadConfig,
+      $this->storage,
+    );
+
+    if ($fileErrors !== []) {
+      Item::delete($itemId, $this->userId(), $this->storage);
+
+      return $this->render('items/create', $this->createFormData($fileErrors, $title, $description));
+    }
+
     $this->setFlash('Item created.');
 
     return $this->redirect('/items');
@@ -74,12 +115,27 @@ final class ItemController extends Controller
     }
 
     [$title, $description, $errors] = $this->validate($request);
+    $uploadErrors = $this->validateUploads($request);
 
-    if ($errors !== []) {
-      return $this->render('items/edit', $this->editFormData($item, $errors, $title, $description));
+    if ($errors !== [] || $uploadErrors !== []) {
+      return $this->render('items/edit', $this->editFormData($item, array_merge($errors, $uploadErrors), $title, $description));
     }
 
     Item::update($itemId, $userId, $title, $description);
+    ItemAttachment::deleteIds($itemId, $userId, $this->removedAttachmentIds($request), $this->storage);
+
+    $fileErrors = ItemAttachment::createMany(
+      $itemId,
+      $request->files('attachments'),
+      $userId,
+      $this->uploadConfig,
+      $this->storage,
+    );
+
+    if ($fileErrors !== []) {
+      return $this->render('items/edit', $this->editFormData($item, $fileErrors, $title, $description));
+    }
+
     $this->setFlash('Item updated.');
 
     return $this->redirect('/items/' . $itemId);
@@ -94,10 +150,28 @@ final class ItemController extends Controller
       return Response::html('Item not found.', 404);
     }
 
-    Item::delete($itemId, $userId);
+    Item::delete($itemId, $userId, $this->storage);
     $this->setFlash('Item deleted.');
 
     return $this->redirect('/items');
+  }
+
+  public function downloadAttachment(Request $request, string $id, string $attachmentId): Response
+  {
+    $itemId = (int) $id;
+    $attachment = ItemAttachment::findForUser((int) $attachmentId, $itemId, $this->userId());
+
+    if ($attachment === null) {
+      return Response::html('Item not found.', 404);
+    }
+
+    $absolute = $this->storage->absolutePath((string) $attachment['stored_path']);
+
+    return Response::download(
+      $absolute,
+      (string) $attachment['original_name'],
+      (string) $attachment['mime_type'],
+    );
   }
 
   private function userId(): int
@@ -109,6 +183,38 @@ final class ItemController extends Controller
     }
 
     return $id;
+  }
+
+  /** @return list<string> */
+  private function validateUploads(Request $request): array
+  {
+    $files = $request->files('attachments');
+
+    if ($files === []) {
+      return [];
+    }
+
+    return \Framework\UploadValidator::validateMany($this->uploadConfig, $files);
+  }
+
+  /** @return list<int> */
+  private function removedAttachmentIds(Request $request): array
+  {
+    $raw = $request->input('removed_attachment_ids', []);
+
+    if (!is_array($raw)) {
+      return [];
+    }
+
+    $ids = [];
+
+    foreach ($raw as $value) {
+      if (is_numeric($value)) {
+        $ids[] = (int) $value;
+      }
+    }
+
+    return $ids;
   }
 
   /**
@@ -126,6 +232,8 @@ final class ItemController extends Controller
       'old' => ['title' => $title, 'description' => $description],
       'formAction' => '/items',
       'cancelHref' => '/items',
+      'itemId' => null,
+      'attachments' => [],
     ];
   }
 
@@ -151,6 +259,8 @@ final class ItemController extends Controller
       ],
       'formAction' => '/items/' . $id,
       'cancelHref' => '/items/' . $id,
+      'itemId' => $id,
+      'attachments' => ItemAttachment::forItem($id),
     ];
   }
 

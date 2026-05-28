@@ -30,6 +30,30 @@ final class Response
     ]);
   }
 
+  public static function download(string $absolutePath, string $downloadName, string $mime): self
+  {
+    if (!is_readable($absolutePath)) {
+      return new self('File not found.', 404);
+    }
+
+    $body = (string) file_get_contents($absolutePath);
+    $safeName = self::safeDownloadFilename($downloadName);
+
+    return new self($body, 200, [
+      'Content-Type' => $mime,
+      'Content-Disposition' => 'attachment; filename="' . $safeName . '"',
+      'Content-Length' => (string) strlen($body),
+    ]);
+  }
+
+  private static function safeDownloadFilename(string $name): string
+  {
+    $name = basename(str_replace(["\0", '"', "\r", "\n"], '', $name));
+    $ascii = preg_replace('/[^\x20-\x7E]+/', '_', $name) ?? 'download';
+
+    return $ascii !== '' ? $ascii : 'download';
+  }
+
   public static function isSafeRedirect(string $location): bool
   {
     if ($location === '' || $location[0] !== '/') {

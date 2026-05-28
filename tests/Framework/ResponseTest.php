@@ -27,6 +27,21 @@ final class ResponseTest extends TestCase
         $this->assertEquals('', $response->body());
     }
 
+    public function testDownloadReturnsFileBody(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'miniphp-dl-');
+        file_put_contents($path, 'file-bytes');
+
+        $response = Response::download($path, 'report.pdf', 'application/pdf');
+
+        $this->assertEquals(200, $response->status());
+        $this->assertEquals('file-bytes', $response->body());
+        $this->assertEquals('application/pdf', $response->header('Content-Type'));
+        $this->assertContains('report.pdf', (string) $response->header('Content-Disposition'));
+
+        unlink($path);
+    }
+
     public function testWithHeadersMergesWithoutReplacingBody(): void
     {
         $response = Response::html('x')->withHeaders(['X-Test' => '1']);

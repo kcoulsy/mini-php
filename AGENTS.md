@@ -311,6 +311,25 @@ See `tests/Feature/CsrfTest.php`.
 
 ---
 
+## File uploads
+
+User-uploaded files must **not** be stored under `public/`. Use `storage/uploads/` (config `uploads.path`) and serve via authenticated routes.
+
+| Piece | Role |
+|--------|------|
+| `framework/UploadedFile.php` | Wraps one upload; `collectionFromGlobal('attachments')` for `attachments[]` |
+| `framework/Request.php` | `files('attachments')` on POST requests |
+| `framework/UploadValidator.php` | Size, count, and MIME checks (`finfo`, not client MIME) |
+| `framework/FileStorage.php` | Store/delete under `uploads.path` with UUID filenames |
+| `framework/Response.php` | `Response::download()` for authorized downloads |
+| `config/app.php` | `uploads.max_bytes`, `allowed_mimes`, `max_files_per_request` |
+
+Forms that accept files need `enctype="multipart/form-data"`. Feature tests use `postMultipart()` from `InteractsWithHttp` with `UploadedFile::fake()`.
+
+CSP for FilePond previews includes `img-src 'self' blob: data:`. Prefer external JS under `public/assets/` (see `public/assets/item-filepond.js`).
+
+---
+
 ## View scripts
 
 Scripts are **not** inlined in the layout by default. They are queued during view rendering and emitted once before `</body>` via `$unsafe_scripts` in `app/Views/layouts/main.php`.
@@ -414,6 +433,9 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Migrator / runner | `framework/Migrations/Migrator.php`, `database/migrate.php` |
 | Auto-migrate on boot | `bootstrap/app.php` → `database/migrate.php` |
 | Run tests | `php bin\test.php` |
+| Upload config | `config/app.php` → `uploads` |
+| Request files | `Request::files('attachments')` |
+| Store upload | `FileStorage::store()` |
 | Framework tests only | `php tests\run.php tests\Framework` |
 | App unit tests only | `php tests\run.php tests\App` |
 | Human-oriented overview | `README.md` |

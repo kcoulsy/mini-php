@@ -20,6 +20,7 @@ $title = 'Items';
         <thead>
             <tr>
                 <th>Title</th>
+                <th>Files</th>
                 <th>Updated</th>
                 <th></th>
             </tr>
@@ -29,6 +30,10 @@ $title = 'Items';
                 <tr>
                     <td>
                         <a href="/items/<?= (int) $item['id'] ?>"><?= $item['title'] ?></a>
+                    </td>
+                    <td class="muted">
+                        <?php $count = (int) ($item['attachment_count'] ?? 0); ?>
+                        <?= $count === 0 ? '—' : $count ?>
                     </td>
                     <td class="muted"><?= $item['updated_at'] ?></td>
                     <td class="actions">

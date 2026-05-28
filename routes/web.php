@@ -16,9 +16,11 @@ $view = $app->view();
 
 /** @var array<string, mixed> $authConfig */
 $authConfig = $app->config('auth', []);
+/** @var array<string, mixed> $uploadConfig */
+$uploadConfig = $app->config('uploads', []);
 
 $auth = new AuthController($view, is_array($authConfig) ? $authConfig : []);
-$items = new ItemController($view);
+$items = new ItemController($view, is_array($uploadConfig) ? $uploadConfig : []);
 
 $authMiddleware = [Authenticate::class];
 $guestMiddleware = [GuestOnly::class];
@@ -37,6 +39,7 @@ $router->get('/items', fn ($request) => $items->index($request), $authMiddleware
 $router->get('/items/create', fn ($request) => $items->create($request), $authMiddleware);
 $router->post('/items', fn ($request) => $items->store($request), $authMiddleware);
 $router->get('/items/{id}', fn ($request, $id) => $items->show($request, $id), $authMiddleware);
+$router->get('/items/{id}/attachments/{attachmentId}', fn ($request, $id, $attachmentId) => $items->downloadAttachment($request, $id, $attachmentId), $authMiddleware);
 $router->get('/items/{id}/edit', fn ($request, $id) => $items->edit($request, $id), $authMiddleware);
 $router->post('/items/{id}', fn ($request, $id) => $items->update($request, $id), $authMiddleware);
 $router->post('/items/{id}/delete', fn ($request, $id) => $items->destroy($request, $id), $authMiddleware);

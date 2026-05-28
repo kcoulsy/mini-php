@@ -29,6 +29,19 @@ trait InteractsWithHttp
         return $this->dispatch(Request::from('POST', $path, [], $body));
     }
 
+    /**
+     * @param array<string, mixed> $body
+     * @param array<string, \Framework\UploadedFile|list<\Framework\UploadedFile>> $files
+     */
+    protected function postMultipart(string $path, array $body = [], array $files = [], bool $withCsrf = true): Response
+    {
+        if ($withCsrf && !array_key_exists(Csrf::FIELD, $body)) {
+            $body[Csrf::FIELD] = Csrf::token();
+        }
+
+        return $this->dispatch(Request::from('POST', $path, [], $body, $files));
+    }
+
     protected function assertOk(Response $response, string $message = ''): void
     {
         $this->assertEquals(200, $response->status(), $message !== '' ? $message : 'Expected HTTP 200.');
