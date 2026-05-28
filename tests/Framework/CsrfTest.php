@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Framework;
 
 use Framework\Csrf;
 use Framework\Request;
@@ -51,5 +51,15 @@ final class CsrfTest extends TestCase
         $this->assertFalse(Csrf::validate(Request::from('POST', '/items', [], [
             Csrf::FIELD => 'invalid',
         ])));
+    }
+
+    public function testFieldRendersHiddenInput(): void
+    {
+        $token = Csrf::token();
+        $field = Csrf::field();
+
+        $this->assertContains('type="hidden"', $field);
+        $this->assertContains('name="_csrf"', $field);
+        $this->assertContains('value="' . $token . '"', $field);
     }
 }

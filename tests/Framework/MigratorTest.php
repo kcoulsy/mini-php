@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Framework;
 
 use Framework\Database;
 use Framework\Migrations\Migrator;
@@ -51,5 +51,43 @@ final class MigratorTest extends TestCase
 
         $secondRun = $migrator->up();
         $this->assertEquals([], $secondRun);
+    }
+
+    public function testInvalidMigrationThrows(): void
+    {
+        file_put_contents($this->migrationsPath . '/001_bad.php', '<?php return 1;');
+
+        $migrator = Migrator::fromPath(Database::pdo(), $this->migrationsPath);
+
+        $threw = false;
+
+        try {
+            $migrator->up();
+        } catch (\RuntimeException $e) {
+            $threw = str_contains($e->getMessage(), '001_bad.php');
+        }
+
+        $this->assertTrue($threw);
+    }
+
+    public function testFailedSqlRollsBackMigration(): void
+    {
+        file_put_contents(
+            $this->migrationsPath . '/001_broken.php',
+            '<?php return static function (PDO $pdo): void { $pdo->exec("NOT VALID SQL"); };',
+        );
+
+        $migrator = Migrator::fromPath(Database::pdo(), $this->migrationsPath);
+
+        $threw = false;
+
+        try {
+            $migrator->up();
+        } catch (\RuntimeException) {
+            $threw = true;
+        }
+
+        $this->assertTrue($threw);
+        $this->assertEquals([], $migrator->applied());
     }
 }

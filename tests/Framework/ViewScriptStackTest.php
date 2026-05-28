@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\Framework;
 
 use Framework\Testing\TestCase;
 use Framework\View;
@@ -160,5 +160,21 @@ PHP);
         $this->assertEquals("<script>x</script>\n<script>y</script>", View::flushScripts());
 
         $this->view->render('flush', [], 'layouts/test');
+    }
+
+    public function testEmptyScriptHtmlIsIgnored(): void
+    {
+        file_put_contents($this->dir . '/blank.php', <<<'PHP'
+<?php
+use Framework\View;
+
+View::script('   ');
+PHP);
+
+        file_put_contents($this->dir . '/layouts/test.php', '<?= $unsafe_scripts ?>');
+
+        $html = $this->view->render('blank', [], 'layouts/test');
+
+        $this->assertEquals('', trim($html));
     }
 }

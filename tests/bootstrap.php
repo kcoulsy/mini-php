@@ -17,6 +17,10 @@ Autoloader::register('Tests\\', BASE_PATH . '/tests');
 
 spl_autoload_register([Autoloader::class, 'load']);
 
+/** @var array<string, mixed> $testConfig */
+$testConfig = require BASE_PATH . '/config/testing.php';
+Session::start($testConfig['session'] ?? []);
+
 function createTestApplication(): App
 {
     Database::disconnect();

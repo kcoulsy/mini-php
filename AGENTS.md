@@ -18,7 +18,7 @@ routes/          Route definitions
 framework/       Router, Request, View, CSRF, Auth, security headers, tests
 app/             Application code
 database/        Migration runner + `migrations/*.php` (up only)
-tests/           Unit + feature tests (see tests/README.md)
+tests/           Framework, App, and Feature tests (see tests/README.md)
 bin/migrate.php  Apply pending migrations
 bin/test.php     Test runner entry
 ```
@@ -55,10 +55,23 @@ Prints each applied filename, or `Nothing to migrate.` when the database is curr
 
 ```cmd
 php bin\test.php
+php tests\run.php tests\Framework
+php tests\run.php tests\App
 php tests\run.php tests\Feature
+php tests\run.php --quiet
 ```
 
-Tests use in-memory SQLite (`config/testing.php`). Feature tests extend `Tests\Support\ApplicationTestCase` and dispatch through `App::handle()` without sending real headers.
+The runner logs each test as it passes (`PASS Class::testMethod (N assertions)`). Use `--quiet` for dot-only output.
+
+Tests use in-memory SQLite (`config/testing.php`).
+
+| Suite | Directory | Purpose |
+|--------|-----------|---------|
+| **Framework** | `tests/Framework/` | Unit tests for `framework/` (Router, View, CSRF, Auth, Migrator, …) |
+| **App** | `tests/App/` | Models and app-only logic (`tests/App/Unit/`) |
+| **Feature** | `tests/Feature/` | Full HTTP stack via `Tests\Support\ApplicationTestCase` and `App::handle()` |
+
+Add or update a test under `tests/Framework/` whenever you change a class in `framework/`. Feature tests cover routes and user flows; they are not a substitute for framework unit tests.
 
 ### Request flow (for debugging)
 
@@ -165,7 +178,7 @@ php bin\test.php
 ### Testing
 
 - Feature/unit tests get a fresh in-memory DB per run; `database/migrate.php` applies every migration file that is not yet recorded (typically all of them on empty memory).
-- `tests/Unit/MigratorTest.php` covers “run pending once, second `up()` is empty” using a temp directory of fake migration files.
+- `tests/Framework/MigratorTest.php` covers “run pending once, second `up()` is empty” using a temp directory of fake migration files.
 
 To exercise migration logic in isolation, use `Migrator::fromPath($pdo, $path)` in a test after `Database::connect()`.
 
@@ -337,7 +350,7 @@ Script stack resets at the start of each `View::render()` call.
 
 1. Prefer `public/assets/*.js` + `View::script(..., 'unique-id')`.
 2. If inline JS is unavoidable, add `script-src` to `config/app.php` `security.csp` (local dev only; avoid `'unsafe-inline'` in production).
-3. Add a feature or unit test if behavior is critical (`tests/Unit/ViewScriptStackTest.php`).
+3. Add a framework or feature test if behavior is critical (`tests/Framework/ViewScriptStackTest.php`).
 
 ---
 
@@ -349,6 +362,14 @@ Script stack resets at the start of each `View::render()` call.
 2. Implement controller action; validate input; use models with prepared statements.
 3. Add a view with `View::csrfField()` in the form.
 4. Add `tests/Feature/...` covering success, validation failure, and CSRF if non-obvious.
+
+### Adding framework code
+
+1. Implement the class under `framework/`.
+2. Add or extend `tests/Framework/...Test.php` (namespace `Tests\Framework`).
+3. Run `php bin\test.php` or `php tests\run.php tests\Framework`.
+
+Use `Tests\Support\DatabaseTestCase` when the test needs migrations (e.g. `Auth`, middleware with session). Prefer `Request::from()` and manual wiring over `ApplicationTestCase` for framework tests.
 
 ### Adding a migration
 
@@ -366,7 +387,7 @@ Follow [Database migrations](#database-migrations): new file under `database/mig
 - Headers/CSP: `framework/HttpSecurity.php`, `config/app.php`
 - Session cookies: `framework/Session.php`, `config/app.php`
 
-Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest.php` or `tests/Unit/ResponseSecurityTest.php` when behavior changes.
+Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest.php` or `tests/Framework/HttpSecurityTest.php` when security behavior changes.
 
 ### Do not
 
@@ -393,5 +414,7 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Migrator / runner | `framework/Migrations/Migrator.php`, `database/migrate.php` |
 | Auto-migrate on boot | `bootstrap/app.php` → `database/migrate.php` |
 | Run tests | `php bin\test.php` |
+| Framework tests only | `php tests\run.php tests\Framework` |
+| App unit tests only | `php tests\run.php tests\App` |
 | Human-oriented overview | `README.md` |
 | Test layout | `tests/README.md` |

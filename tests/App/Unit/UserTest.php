@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
+namespace Tests\App\Unit;
 
 use App\Models\User;
 use Tests\Support\DatabaseTestCase;
