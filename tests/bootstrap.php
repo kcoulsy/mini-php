@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Framework\App;
 use Framework\Autoloader;
 use Framework\Database;
+use Framework\Session;
 
 define('BASE_PATH', dirname(__DIR__));
 
@@ -22,6 +23,10 @@ function createTestApplication(): App
 
     /** @var array<string, mixed> $config */
     $config = require BASE_PATH . '/config/testing.php';
+
+    /** @var array<string, mixed> $sessionConfig */
+    $sessionConfig = $config['session'] ?? [];
+    Session::start($sessionConfig);
 
     $app = new App($config);
 

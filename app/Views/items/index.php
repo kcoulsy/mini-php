@@ -28,13 +28,13 @@ $title = 'Items';
             <?php foreach ($items as $item): ?>
                 <tr>
                     <td>
-                        <a href="/items/<?= (int) $item['id'] ?>"><?= \Framework\View::e($item['title']) ?></a>
+                        <a href="/items/<?= (int) $item['id'] ?>"><?= $item['title'] ?></a>
                     </td>
-                    <td class="muted"><?= \Framework\View::e($item['updated_at']) ?></td>
+                    <td class="muted"><?= $item['updated_at'] ?></td>
                     <td class="actions">
                         <a href="/items/<?= (int) $item['id'] ?>/edit">Edit</a>
-                        <form method="post" action="/items/<?= (int) $item['id'] ?>/delete" class="inline-form"
-                              onsubmit="return confirm('Delete this item?');">
+                        <form method="post" action="/items/<?= (int) $item['id'] ?>/delete" class="inline-form">
+                            <?= \Framework\View::csrfField() ?>
                             <button type="submit" class="link-danger">Delete</button>
                         </form>
                     </td>

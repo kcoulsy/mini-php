@@ -107,16 +107,16 @@ final class TestRunner
                 Assert::resetCount();
                 $test->runTest($method->getName());
                 $this->passed++;
-                $this->assertions += Assert::count();
+                $this->assertions += Assert::assertionCount();
                 echo ".";
             } catch (AssertionFailed $e) {
                 $this->failed++;
-                $this->assertions += Assert::count();
+                $this->assertions += Assert::assertionCount();
                 $this->recordFailure($name, $e->getMessage());
                 echo "F";
             } catch (\Throwable $e) {
                 $this->failed++;
-                $this->assertions += Assert::count();
+                $this->assertions += Assert::assertionCount();
                 $this->recordFailure($name, $e::class . ': ' . $e->getMessage());
                 echo "E";
             }

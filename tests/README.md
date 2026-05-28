@@ -14,6 +14,7 @@ tests/
 ```
 
 **Unit** — isolate one class; build dependencies manually.  
+**Unit (models)** — extend `DatabaseTestCase` for in-memory SQLite + migrations.  
 **Feature** — extend `ApplicationTestCase`; use `$this->get()` / `$this->post()`.
 
 ## Run

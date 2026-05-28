@@ -1,0 +1,15 @@
+{
+    "name": "miniphp/site",
+    "description": "Pure PHP framework demo — autoload only, no dependencies",
+    "autoload": {
+        "psr-4": {
+            "Framework\\": "framework/",
+            "App\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    }
+}

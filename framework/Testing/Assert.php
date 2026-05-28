@@ -13,7 +13,7 @@ final class Assert
         self::$count = 0;
     }
 
-    public static function count(): int
+    public static function assertionCount(): int
     {
         return self::$count;
     }
@@ -30,6 +30,21 @@ final class Assert
     public static function false(bool $condition, string $message = ''): void
     {
         self::true(!$condition, $message !== '' ? $message : 'Expected false.');
+    }
+
+    public static function notNull(mixed $actual, string $message = ''): void
+    {
+        self::true($actual !== null, $message !== '' ? $message : 'Expected non-null value.');
+    }
+
+    public static function null(mixed $actual, string $message = ''): void
+    {
+        self::true($actual === null, $message !== '' ? $message : 'Expected null.');
+    }
+
+    public static function arrayCount(int $expected, countable|array $actual, string $message = ''): void
+    {
+        self::equals($expected, count($actual), $message);
     }
 
     public static function equals(mixed $expected, mixed $actual, string $message = ''): void

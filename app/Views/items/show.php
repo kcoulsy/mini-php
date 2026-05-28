@@ -9,16 +9,16 @@ $title = $item['title'];
 
 <article class="card">
     <header class="card-header">
-        <h1><?= \Framework\View::e($item['title']) ?></h1>
+        <h1><?= $item['title'] ?></h1>
         <div class="card-actions">
             <a href="/items/<?= (int) $item['id'] ?>/edit" class="btn">Edit</a>
             <a href="/items" class="btn btn-ghost">Back</a>
         </div>
     </header>
 
-    <p class="item-description"><?= nl2br(\Framework\View::e($item['description'])) ?></p>
+    <p class="item-description"><?= nl2br((string) $item['description']) ?></p>
 
     <footer class="meta muted">
-        Created <?= \Framework\View::e($item['created_at']) ?> · Updated <?= \Framework\View::e($item['updated_at']) ?>
+        Created <?= $item['created_at'] ?> · Updated <?= $item['updated_at'] ?>
     </footer>
 </article>

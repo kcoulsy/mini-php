@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Framework\App;
 use Framework\Autoloader;
+use Framework\Session;
 
 require dirname(__DIR__) . '/framework/Autoloader.php';
 
@@ -14,6 +15,10 @@ spl_autoload_register([Autoloader::class, 'load']);
 
 /** @var array<string, mixed> $config */
 $config = require dirname(__DIR__) . '/config/app.php';
+
+/** @var array<string, mixed> $sessionConfig */
+$sessionConfig = $config['session'] ?? [];
+Session::start($sessionConfig);
 
 $app = new App($config);
 

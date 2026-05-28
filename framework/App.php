@@ -36,7 +36,25 @@ final class App
 
   public function handle(Request $request): Response
   {
-    return $this->router->dispatch($request);
+    if ($this->config('security.csrf', true) && $request->method() === 'POST') {
+      if (!Csrf::validate($request)) {
+        return $this->secure(Response::html('Invalid or missing CSRF token.', 403));
+      }
+    }
+
+    return $this->secure($this->router->dispatch($request));
+  }
+
+  private function secure(Response $response): Response
+  {
+    if ($this->config('security.headers', true) === false) {
+      return $response;
+    }
+
+    /** @var array<string, mixed> $security */
+    $security = $this->config('security', []);
+
+    return HttpSecurity::apply($response, $security);
   }
 
   public function run(): void

@@ -40,4 +40,17 @@ final class ItemsTest extends ApplicationTestCase
         $this->assertOk($response);
         $this->assertSee($response, 'Title is required.');
     }
+
+    public function testStoredHtmlInTitleIsEscapedOnShow(): void
+    {
+        $this->post('/items', [
+            'title' => '<img src=x onerror=alert(1)>',
+            'description' => '',
+        ]);
+
+        $show = $this->get('/items/1');
+
+        $this->assertSee($show, '&lt;img src=x onerror=alert(1)&gt;');
+        $this->assertNotSee($show, '<img src=x onerror=alert(1)>');
+    }
 }

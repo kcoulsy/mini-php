@@ -20,10 +20,23 @@ final class Response
 
   public static function redirect(string $location, int $status = 302): self
   {
+    if (!self::isSafeRedirect($location)) {
+      $location = '/';
+    }
+
     return new self('', $status, [
       'Location' => $location,
       'Content-Type' => 'text/html; charset=UTF-8',
     ]);
+  }
+
+  public static function isSafeRedirect(string $location): bool
+  {
+    if ($location === '' || $location[0] !== '/') {
+      return false;
+    }
+
+    return !str_starts_with($location, '//');
   }
 
   public function status(): int
@@ -45,6 +58,14 @@ final class Response
   public function header(string $name, ?string $default = null): ?string
   {
     return $this->headers[$name] ?? $default;
+  }
+
+  /**
+   * @param array<string, string> $headers
+   */
+  public function withHeaders(array $headers): self
+  {
+    return new self($this->body, $this->status, array_merge($this->headers, $headers));
   }
 
   public function send(): void

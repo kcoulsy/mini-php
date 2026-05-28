@@ -10,4 +10,19 @@ return [
         'driver' => 'sqlite',
         'path' => dirname(__DIR__) . '/storage/database.sqlite',
     ],
+    'session' => [
+        'name' => 'miniphp_sid',
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => null,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ],
+    'security' => [
+        'csrf' => true,
+        'headers' => true,
+        'csp' => "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+        'hsts' => false,
+    ],
 ];

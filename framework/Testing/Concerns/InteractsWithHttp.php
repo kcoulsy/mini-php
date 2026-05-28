@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Framework\Testing\Concerns;
 
+use Framework\Csrf;
 use Framework\Request;
 use Framework\Response;
 
@@ -16,9 +17,15 @@ trait InteractsWithHttp
         return $this->dispatch(Request::from('GET', $path, $query));
     }
 
-    /** @param array<string, mixed> $body */
-    protected function post(string $path, array $body = []): Response
+    /**
+     * @param array<string, mixed> $body
+     */
+    protected function post(string $path, array $body = [], bool $withCsrf = true): Response
     {
+        if ($withCsrf && !array_key_exists(Csrf::FIELD, $body)) {
+            $body[Csrf::FIELD] = Csrf::token();
+        }
+
         return $this->dispatch(Request::from('POST', $path, [], $body));
     }
 

@@ -21,12 +21,8 @@ abstract class ApplicationTestCase extends TestCase
 
     protected function setUp(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $_SESSION = [];
         $this->app = createTestApplication();
+        $_SESSION = [];
     }
 
     protected function dispatch(Request $request): Response
