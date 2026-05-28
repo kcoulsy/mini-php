@@ -6,6 +6,18 @@ namespace Framework;
 
 final class View
 {
+  /** @var list<string> */
+  private static array $scripts = [];
+
+  /** @var array<string, true> */
+  private static array $scriptIds = [];
+
+  private static ?string $scriptCaptureId = null;
+
+  private static bool $scriptCaptureDiscard = false;
+
+  private static int $scriptCaptureLevel = 0;
+
   public function __construct(private readonly string $viewsPath) {}
 
   /**
@@ -13,6 +25,8 @@ final class View
    */
   public function render(string $template, array $data = [], ?string $layout = 'layouts/main'): string
   {
+    self::resetScripts();
+
     $content = $this->renderFile($template, $data);
 
     if ($layout === null) {
@@ -21,7 +35,86 @@ final class View
 
     return $this->renderFile($layout, array_merge($data, [
       'unsafe_content' => $content,
+      'unsafe_scripts' => self::flushScripts(),
     ]));
+  }
+
+  public static function script(string $html, ?string $id = null): void
+  {
+    $html = trim($html);
+
+    if ($html === '') {
+      return;
+    }
+
+    if ($id !== null) {
+      if (isset(self::$scriptIds[$id])) {
+        return;
+      }
+
+      self::$scriptIds[$id] = true;
+    }
+
+    self::$scripts[] = $html;
+  }
+
+  public static function scriptStart(?string $id = null): void
+  {
+    if ($id !== null && isset(self::$scriptIds[$id])) {
+      self::$scriptCaptureId = $id;
+      self::$scriptCaptureDiscard = true;
+    } else {
+      self::$scriptCaptureId = $id;
+      self::$scriptCaptureDiscard = false;
+    }
+
+    self::$scriptCaptureLevel = ob_get_level();
+    ob_start();
+  }
+
+  public static function scriptEnd(): void
+  {
+    if (self::$scriptCaptureLevel === 0) {
+      return;
+    }
+
+    $html = (string) ob_get_clean();
+    self::$scriptCaptureLevel = 0;
+
+    if (self::$scriptCaptureDiscard) {
+      self::$scriptCaptureId = null;
+      self::$scriptCaptureDiscard = false;
+
+      return;
+    }
+
+    $id = self::$scriptCaptureId;
+    self::$scriptCaptureId = null;
+    self::$scriptCaptureDiscard = false;
+
+    self::script($html, $id);
+  }
+
+  public static function flushScripts(): string
+  {
+    if (self::$scripts === []) {
+      return '';
+    }
+
+    return implode("\n", self::$scripts);
+  }
+
+  private static function resetScripts(): void
+  {
+    while (self::$scriptCaptureLevel > 0 && ob_get_level() >= self::$scriptCaptureLevel) {
+      ob_end_clean();
+    }
+
+    self::$scripts = [];
+    self::$scriptIds = [];
+    self::$scriptCaptureId = null;
+    self::$scriptCaptureDiscard = false;
+    self::$scriptCaptureLevel = 0;
   }
 
   /**

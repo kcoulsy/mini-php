@@ -9,52 +9,64 @@ use Framework\Database;
 final class Item
 {
   /** @return list<array<string, mixed>> */
-  public static function all(): array
+  public static function allForUser(int $userId): array
   {
-    $stmt = Database::pdo()->query('SELECT * FROM items ORDER BY id DESC');
+    $stmt = Database::pdo()->prepare(
+      'SELECT * FROM items WHERE user_id = :user_id ORDER BY id DESC'
+    );
+    $stmt->execute(['user_id' => $userId]);
 
     return $stmt->fetchAll();
   }
 
-  public static function find(int $id): ?array
+  public static function findForUser(int $id, int $userId): ?array
   {
-    $stmt = Database::pdo()->prepare('SELECT * FROM items WHERE id = :id LIMIT 1');
-    $stmt->execute(['id' => $id]);
+    $stmt = Database::pdo()->prepare(
+      'SELECT * FROM items WHERE id = :id AND user_id = :user_id LIMIT 1'
+    );
+    $stmt->execute(['id' => $id, 'user_id' => $userId]);
     $row = $stmt->fetch();
 
     return $row === false ? null : $row;
   }
 
-  public static function create(string $title, string $description): int
+  public static function create(string $title, string $description, int $userId): int
   {
     $stmt = Database::pdo()->prepare(
-      'INSERT INTO items (title, description) VALUES (:title, :description)'
+      'INSERT INTO items (title, description, user_id) VALUES (:title, :description, :user_id)'
     );
     $stmt->execute([
       'title' => $title,
       'description' => $description,
+      'user_id' => $userId,
     ]);
 
     return (int) Database::pdo()->lastInsertId();
   }
 
-  public static function update(int $id, string $title, string $description): bool
+  public static function update(int $id, int $userId, string $title, string $description): bool
   {
     $stmt = Database::pdo()->prepare(
-      'UPDATE items SET title = :title, description = :description, updated_at = datetime(\'now\') WHERE id = :id'
+      'UPDATE items SET title = :title, description = :description, updated_at = datetime(\'now\')
+       WHERE id = :id AND user_id = :user_id'
     );
 
-    return $stmt->execute([
+    $stmt->execute([
       'id' => $id,
+      'user_id' => $userId,
       'title' => $title,
       'description' => $description,
     ]);
+
+    return $stmt->rowCount() > 0;
   }
 
-  public static function delete(int $id): bool
+  public static function delete(int $id, int $userId): bool
   {
-    $stmt = Database::pdo()->prepare('DELETE FROM items WHERE id = :id');
+    $stmt = Database::pdo()->prepare('DELETE FROM items WHERE id = :id AND user_id = :user_id');
 
-    return $stmt->execute(['id' => $id]);
+    $stmt->execute(['id' => $id, 'user_id' => $userId]);
+
+    return $stmt->rowCount() > 0;
   }
 }

@@ -7,7 +7,8 @@ declare(strict_types=1);
  * Injected by Framework\View::render() via extract().
  *
  * Strings are auto-escaped on output unless the data key is prefixed with unsafe_
- * (e.g. unsafe_content for pre-rendered HTML in the layout).
+ * (e.g. unsafe_content for pre-rendered HTML in the layout, unsafe_scripts for
+ * scripts queued via View::script() and emitted before </body>).
  *
  * @phpstan-type ItemRow array{
  *     id: int|string,

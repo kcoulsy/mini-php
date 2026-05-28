@@ -11,6 +11,10 @@ final class Session
 {
     public const string TOKEN_KEY = '_csrf_token';
 
+    public const string USER_KEY = '_user_id';
+
+    public const string INTENDED_URL_KEY = 'url.intended';
+
     /**
      * @param array<string, mixed> $config
      */

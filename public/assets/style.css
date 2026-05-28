@@ -66,6 +66,16 @@ a:hover {
     align-items: center;
 }
 
+.nav-user {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.nav-logout {
+    display: inline;
+    margin: 0;
+}
+
 main {
     flex: 1;
     padding-bottom: 3rem;
@@ -239,6 +249,25 @@ h1 {
     background: var(--bg);
     color: var(--text);
     font: inherit;
+}
+
+.password-field {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    margin-top: 0.35rem;
+}
+
+.password-field input {
+    flex: 1;
+    margin-top: 0;
+    min-width: 0;
+}
+
+.password-field .password-toggle {
+    align-self: stretch;
+    margin-top: 0;
+    white-space: nowrap;
 }
 
 .form-actions {

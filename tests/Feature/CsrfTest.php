@@ -22,6 +22,7 @@ final class CsrfTest extends ApplicationTestCase
 
     public function testCreateFormIncludesCsrfField(): void
     {
+        $this->actingAs($this->createUser());
         $response = $this->get('/items/create');
 
         $this->assertOk($response);

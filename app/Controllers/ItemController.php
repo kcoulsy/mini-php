@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\Item;
+use Framework\Auth;
 use Framework\Controller;
 use Framework\Request;
 use Framework\Response;
@@ -13,15 +14,17 @@ final class ItemController extends Controller
 {
   public function index(Request $request): Response
   {
+    $userId = $this->userId();
+
     return $this->render('items/index', [
-      'items' => Item::all(),
+      'items' => Item::allForUser($userId),
       'flash' => $this->flash(),
     ]);
   }
 
   public function show(Request $request, string $id): Response
   {
-    $item = Item::find((int) $id);
+    $item = Item::findForUser((int) $id, $this->userId());
 
     if ($item === null) {
       return Response::html('Item not found.', 404);
@@ -43,7 +46,7 @@ final class ItemController extends Controller
       return $this->render('items/create', $this->createFormData($errors, $title, $description));
     }
 
-    Item::create($title, $description);
+    Item::create($title, $description, $this->userId());
     $this->setFlash('Item created.');
 
     return $this->redirect('/items');
@@ -51,7 +54,7 @@ final class ItemController extends Controller
 
   public function edit(Request $request, string $id): Response
   {
-    $item = Item::find((int) $id);
+    $item = Item::findForUser((int) $id, $this->userId());
 
     if ($item === null) {
       return Response::html('Item not found.', 404);
@@ -62,7 +65,9 @@ final class ItemController extends Controller
 
   public function update(Request $request, string $id): Response
   {
-    $item = Item::find((int) $id);
+    $itemId = (int) $id;
+    $userId = $this->userId();
+    $item = Item::findForUser($itemId, $userId);
 
     if ($item === null) {
       return Response::html('Item not found.', 404);
@@ -74,18 +79,36 @@ final class ItemController extends Controller
       return $this->render('items/edit', $this->editFormData($item, $errors, $title, $description));
     }
 
-    Item::update((int) $id, $title, $description);
+    Item::update($itemId, $userId, $title, $description);
     $this->setFlash('Item updated.');
 
-    return $this->redirect('/items/' . $id);
+    return $this->redirect('/items/' . $itemId);
   }
 
   public function destroy(Request $request, string $id): Response
   {
-    Item::delete((int) $id);
+    $itemId = (int) $id;
+    $userId = $this->userId();
+
+    if (Item::findForUser($itemId, $userId) === null) {
+      return Response::html('Item not found.', 404);
+    }
+
+    Item::delete($itemId, $userId);
     $this->setFlash('Item deleted.');
 
     return $this->redirect('/items');
+  }
+
+  private function userId(): int
+  {
+    $id = Auth::id();
+
+    if ($id === null) {
+      throw new \RuntimeException('Authenticated user required.');
+    }
+
+    return $id;
   }
 
   /**

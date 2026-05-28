@@ -10,6 +10,8 @@ final class ItemsTest extends ApplicationTestCase
 {
     public function testIndexShowsEmptyState(): void
     {
+        $this->actingAs($this->createUser());
+
         $response = $this->get('/items');
 
         $this->assertOk($response);
@@ -18,6 +20,8 @@ final class ItemsTest extends ApplicationTestCase
 
     public function testStoreCreatesItemAndRedirects(): void
     {
+        $this->actingAs($this->createUser());
+
         $response = $this->post('/items', [
             'title' => 'First item',
             'description' => 'Details here',
@@ -32,6 +36,8 @@ final class ItemsTest extends ApplicationTestCase
 
     public function testStoreShowsValidationErrors(): void
     {
+        $this->actingAs($this->createUser());
+
         $response = $this->post('/items', [
             'title' => '',
             'description' => '',
@@ -43,6 +49,8 @@ final class ItemsTest extends ApplicationTestCase
 
     public function testStoredHtmlInTitleIsEscapedOnShow(): void
     {
+        $this->actingAs($this->createUser());
+
         $this->post('/items', [
             'title' => '<img src=x onerror=alert(1)>',
             'description' => '',
@@ -52,5 +60,20 @@ final class ItemsTest extends ApplicationTestCase
 
         $this->assertSee($show, '&lt;img src=x onerror=alert(1)&gt;');
         $this->assertNotSee($show, '<img src=x onerror=alert(1)>');
+    }
+
+    public function testUserCannotViewAnotherUsersItem(): void
+    {
+        $ownerId = $this->createUser('owner@example.com');
+        $this->actingAs($ownerId);
+        $this->post('/items', ['title' => 'Private item', 'description' => '']);
+
+        $otherId = $this->createUser('other@example.com');
+        $this->actingAs($otherId);
+
+        $response = $this->get('/items/1');
+
+        $this->assertEquals(404, $response->status());
+        $this->assertSee($response, 'Item not found.');
     }
 }

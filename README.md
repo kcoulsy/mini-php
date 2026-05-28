@@ -33,7 +33,9 @@ From the project root, using PHP's built-in server:
 php -S localhost:8000 -t public public/router.php
 ```
 
-Open [http://localhost:8000/items](http://localhost:8000/items).
+Open [http://localhost:8000/](http://localhost:8000/) — guests are sent to login; register or log in to manage items.
+
+If you upgraded from an older schema and see database errors, delete `storage/database.sqlite` and reload the app so migrations can recreate tables.
 
 ### Apache
 
@@ -47,6 +49,25 @@ Point the virtual host document root at `public/`. `public/.htaccess` rewrites a
 4. Controller uses `Model` + `View`, returns `Response`
 5. Response is sent to the client
 
+## View scripts
+
+Register page scripts from any view or partial; they are collected during content render and output once before `</body>` in the layout.
+
+```php
+<?php View::script('<script src="/assets/widget.js"></script>', 'widget'); ?>
+
+<?php View::scriptStart('list-actions'); ?>
+<script>
+  document.querySelectorAll('.delete').forEach(/* ... */);
+</script>
+<?php View::scriptEnd(); ?>
+```
+
+- Pass an **id** as the second argument to `View::script()` (or to `View::scriptStart()`) to include that block only once per request — useful when a partial may be required multiple times.
+- Omit the id when you need every push kept (e.g. per-row init), or use unique ids such as `'chart-' . $item['id']`.
+
+**Content-Security-Policy:** the default CSP does not allow inline scripts. Use external `<script src="...">` files, or add an explicit `script-src` in `config/app.php` (e.g. `'self' 'unsafe-inline'` for local development only).
+
 ## Tests
 
 ```cmd
@@ -55,11 +76,26 @@ php bin\test.php
 
 Uses an in-memory SQLite database (`config/testing.php`). See `tests/README.md` for layout and conventions.
 
-## CRUD routes
+## Authentication
+
+Session-based auth with hashed passwords (`password_hash` / `password_verify`). CSRF protection applies to all `POST` requests. After login, the session ID is regenerated to reduce session fixation risk.
+
+| Method | Path | Action | Access |
+|--------|------|--------|--------|
+| GET | `/` | Home | Redirect to `/items` or `/login` |
+| GET | `/login` | Login form | Guest |
+| POST | `/login` | Log in | Guest |
+| GET | `/register` | Register form | Guest |
+| POST | `/register` | Create account | Guest |
+| POST | `/logout` | Log out | Authenticated |
+
+## Item routes (authenticated)
+
+Each item belongs to the logged-in user. Accessing another user's item returns **404**.
 
 | Method | Path | Action |
 |--------|------|--------|
-| GET | `/items` | List |
+| GET | `/items` | List your items |
 | GET | `/items/create` | Create form |
 | POST | `/items` | Store |
 | GET | `/items/{id}` | Show |

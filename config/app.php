@@ -19,6 +19,9 @@ return [
         'httponly' => true,
         'samesite' => 'Lax',
     ],
+    'auth' => [
+        'password_min_length' => 8,
+    ],
     'security' => [
         'csrf' => true,
         'headers' => true,
