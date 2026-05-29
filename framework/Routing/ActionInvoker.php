@@ -10,6 +10,7 @@ use Framework\Request;
 use Framework\Response;
 use Framework\Validation\DtoFactory;
 use Framework\Validation\DtoResult;
+use Framework\Validation\ValidationRedirect;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -45,11 +46,7 @@ final class ActionInvoker
                 $args[] = $this->resolveParameter($handler, $parameter, $request, $routeParams);
             }
         } catch (ValidationFailure $failure) {
-            if (method_exists($handler, 'onValidationFailed')) {
-                return $handler->onValidationFailed($request, $failure->result);
-            }
-
-            throw $failure;
+            return ValidationRedirect::redirectBack($request, $failure->result);
         }
 
         return $method->invokeArgs($handler, $args);

@@ -8,13 +8,14 @@ use App\Data\RegisterData;
 use App\Models\User;
 use Framework\Auth;
 use Framework\Controller;
-use Framework\Middleware\GuestOnly;
+use App\CurrentUser;
+use App\Middleware\GuestOnly;
 use Framework\Request;
 use Framework\Response;
 use Framework\Routing\Attributes\Get;
 use Framework\Routing\Attributes\Middleware;
 use Framework\Routing\Attributes\Post;
-use Framework\Validation\DtoResult;
+use Framework\Validation\ValidationRedirect;
 
 #[Middleware([GuestOnly::class])]
 final class Register extends Controller
@@ -28,22 +29,33 @@ final class Register extends Controller
     }
 
     #[Get('/register')]
-    public function show(Request $request): Response
+    public function show(): Response
     {
-        return $this->render('auth/register', $this->formData());
+        $old = $this->validationOld();
+
+        return $this->render('auth/register', [
+            'title' => 'Register',
+            'errors' => $this->validationErrors(),
+            'old' => [
+                'email' => (string) ($old['email'] ?? ''),
+                'name' => (string) ($old['name'] ?? ''),
+            ],
+            'formAction' => '/register',
+        ]);
     }
 
     #[Post('/register')]
-    public function register(Request $request, RegisterData $data): Response
+    public function register(RegisterData $data): Response
     {
         $minLength = (int) ($this->authConfig['password_min_length'] ?? 8);
 
         if (mb_strlen($data->password) < $minLength) {
-            return $this->render('auth/register', $this->formData(
+            ValidationRedirect::storeErrors(
                 ['password' => ["Password must be at least {$minLength} characters."]],
-                $data->email,
-                $data->name,
-            ));
+                ['email' => $data->email, 'name' => $data->name],
+            );
+
+            return $this->redirect('/register');
         }
 
         $user = User::create([
@@ -54,32 +66,6 @@ final class Register extends Controller
         ]);
         Auth::login($user->id);
 
-        return $this->redirect(Auth::homePath());
-    }
-
-    public function onValidationFailed(Request $request, DtoResult $result): Response
-    {
-        return $this->render('auth/register', $this->formData(
-            $result->errors,
-            (string) ($result->old['email'] ?? ''),
-            (string) ($result->old['name'] ?? ''),
-        ));
-    }
-
-    /**
-     * @param array<string, list<string>> $errors
-     * @return array<string, mixed>
-     */
-    private function formData(
-        array $errors = [],
-        string $email = '',
-        string $name = '',
-    ): array {
-        return [
-            'title' => 'Register',
-            'errors' => $errors,
-            'old' => ['email' => $email, 'name' => $name],
-            'formAction' => '/register',
-        ];
+        return $this->redirect(CurrentUser::homePath());
     }
 }

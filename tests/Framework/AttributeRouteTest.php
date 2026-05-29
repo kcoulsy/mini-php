@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Framework;
 
-use App\Http\HomeRedirect;
+use App\Http\Home;
 use Framework\Request;
 use Framework\Response;
 use Framework\Router;
@@ -20,7 +20,7 @@ final class AttributeRouteTest extends TestCase
         $router = new Router();
         $container = new HandlerContainer(new View(sys_get_temp_dir()));
         $registrar = new \Framework\Routing\RouteRegistrar($router, new ActionInvoker());
-        $registrar->registerClass(HomeRedirect::class, $container);
+        $registrar->registerClass(Home::class, $container);
 
         $response = $router->dispatch(Request::from('GET', '/'));
 

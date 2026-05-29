@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Framework\Middleware;
+namespace App\Middleware;
 
+use App\CurrentUser;
 use Framework\Auth;
 use Framework\Request;
 use Framework\Response;
@@ -16,6 +17,6 @@ final class GuestOnly
             return null;
         }
 
-        return Response::redirect(Auth::homePath());
+        return Response::redirect(CurrentUser::homePath());
     }
 }

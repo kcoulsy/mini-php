@@ -15,7 +15,7 @@ use Framework\Controller;
 use Framework\Database;
 use Framework\FileStorage;
 use Framework\Middleware\Authenticate;
-use Framework\Middleware\RequireAdmin;
+use App\Middleware\RequireAdmin;
 use Framework\Request;
 use Framework\Response;
 use Framework\Routing\Attributes\Get;

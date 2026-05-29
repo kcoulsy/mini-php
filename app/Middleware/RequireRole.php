@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Framework\Middleware;
+namespace App\Middleware;
 
+use App\CurrentUser;
 use Framework\Auth;
+use Framework\Middleware\Authenticate;
 use Framework\Request;
 use Framework\Response;
 
@@ -21,7 +23,7 @@ final class RequireRole
                 return (new Authenticate())($request);
             }
 
-            if (!Auth::hasRole(...$roles)) {
+            if (!CurrentUser::hasRole(...$roles)) {
                 return Response::html('Forbidden.', 403);
             }
 

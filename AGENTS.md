@@ -5,16 +5,14 @@ This document is for humans and coding agents working in this repo. It summarize
 ## Stack and layout
 
 - **PHP 8.2+** with PDO SQLite. No runtime Composer packages; PSR-4 autoloading via `framework/Autoloader.php` (optional `composer.json` for IDE tooling only).
-- **Front controller:** `public/index.php` → `bootstrap/app.php` → `routes/web.php`.
+- **Front controller:** `public/index.php` — autoload, config, session, routes from `app/Http/`.
 - **MVC:** `app/Controllers`, `app/Models`, `app/Views`; core in `framework/`.
 - **Config:** `config/app.php` (app, database, session, auth, security).
-- **DB:** SQLite at `storage/database.sqlite`; versioned migrations in `database/migrations/`; applied on bootstrap via `database/migrate.php` or manually with `php bin/migrate.php`.
+- **DB:** SQLite at `storage/database.sqlite`; versioned migrations in `database/migrations/`; apply with `php bin/migrate.php` (tests auto-migrate via `tests/bootstrap.php`).
 
 ```
-public/          Document root (only web-exposed tree)
-bootstrap/       App bootstrap + session start
+public/          Document root + front controller (`index.php`)
 config/          Configuration
-routes/          Route definitions
 framework/       Router, Request, View, CSRF, Auth, security headers, tests
 app/             Application code
 database/        Migration runner + `migrations/*.php` (up only)
@@ -32,7 +30,7 @@ There is no asset bundler or compile step. “Building” means: PHP available, 
 From the project root:
 
 ```cmd
-php -S localhost:8000 -t public public/router.php
+php -S localhost:8000 -t public public/index.php
 ```
 
 Open http://localhost:8000/. Guests are redirected to login; register as a **student** or log in. Teachers/admins are created in `/admin` or via `php bin\make-admin.php`.
@@ -104,7 +102,7 @@ There is no separate migration config: the database path comes from `config/app.
 
 | Context | How |
 |---------|-----|
-| Web / local app | `bootstrap/app.php` creates `App` (which calls `Database::connect()`), then `require database/migrate.php` |
+| Web / local app | `App` connects on construction (`public/index.php`); run `php bin/migrate.php` for schema |
 | Tests | `tests/bootstrap.php` and `InteractsWithDatabase::refreshDatabase()` connect first (in-memory SQLite via `config/testing.php`), then require `database/migrate.php` |
 | Manual / deploy | `php bin\migrate.php` connects using `config/app.php` and migrates the file database |
 
@@ -294,12 +292,12 @@ Extend CSP in `config/app.php` when adding external scripts, styles, or fonts. T
 ### Authentication and sessions
 
 - `Framework\Auth`: session user id, `password_hash` / `password_verify`, `session_regenerate_id(true)` on login and logout.
-- Middleware: `Authenticate` (redirect to `/login`, store intended URL), `GuestOnly` (logged-in users away from login/register).
+- Middleware: `Authenticate` (redirect to `/login`, store intended URL). App middleware: `GuestOnly`, `RequireRole`, `RequireAdmin` (logged-in users away from login/register; role gates).
 - Password rules: `config/app.php` → `auth.password_min_length` (default 8).
 
 ### Authorization (roles and classes)
 
-Users have `role`: `student`, `teacher`, or `admin`. Route prefixes use `RequireRole` / `RequireAdmin` middleware. Resource checks live in [`app/Authorization.php`](app/Authorization.php). Wrong resource id → **404**; wrong role on prefix → **403**. Students register publicly; teachers/admins are created in admin UI.
+Users have `role`: `student`, `teacher`, or `admin`. Route prefixes use app `RequireRole` / `RequireAdmin` middleware (`app/Middleware/`). Role helpers and home URLs: [`app/CurrentUser.php`](app/CurrentUser.php). Resource checks live in [`app/Authorization.php`](app/Authorization.php). Wrong resource id → **404**; wrong role on prefix → **403**. Students register publicly; teachers/admins are created in admin UI.
 
 ### PDO / SQL
 
@@ -487,7 +485,7 @@ Tests: `tests/Framework/ControllerTest.php` (`testFlashIsConsumedOnce`, `testSet
 4. On success: `setFlash()` + redirect; on the target GET pass `'flash' => $this->flash()`.
 5. Add `tests/Feature/...` for success, validation failure, and CSRF if non-obvious.
 
-Routes are registered automatically: `routes/web.php` calls `$app->registerRoutes()` which scans `app/Http/`. Use `#[Middleware([…])]` on handler classes. Route model binding: `{assignment}` → `Assignment $assignment`.
+Routes are registered automatically: `public/index.php` calls `$app->registerRoutes()`, which scans `app/Http/`. Use `#[Middleware([…])]` on handler classes. Route model binding: `{assignment}` → `Assignment $assignment`.
 
 ### Adding framework code
 
@@ -541,16 +539,16 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Raw HTML block | `unsafe_*` view key or `Escaped` |
 | Page scripts | `View::script()` / `scriptStart`/`scriptEnd` |
 | Flash after redirect | `setFlash()` then `'flash' => $this->flash()` on next render |
-| Auth guard | `Authenticate` / `GuestOnly` / `RequireRole` / `RequireAdmin` |
-| Role home URLs | `Auth::homePath()` → `/student`, `/teach`, `/admin` |
+| Auth guard | `Authenticate` (framework); `GuestOnly` / `RequireRole` / `RequireAdmin` (app) |
+| Role home URLs | `CurrentUser::homePath()` → `/student`, `/teach`, `/admin` |
 | Authorization checks | `app/Authorization.php` |
 | First admin (CLI) | `php bin\make-admin.php email password "Name"` |
 | Demo seed data | `php bin\seed.php` or `php bin\seed.php --fresh` |
-| Run app | `php -S localhost:8000 -t public public/router.php` |
+| Run app | `php -S localhost:8000 -t public public/index.php` |
 | Run migrations (CLI) | `php bin\migrate.php` |
 | Migration files | `database/migrations/NNN_name.php` |
 | Migrator / runner | `framework/Migrations/Migrator.php`, `database/migrate.php` |
-| Auto-migrate on boot | `bootstrap/app.php` → `database/migrate.php` |
+| Auto-migrate in tests | `tests/bootstrap.php` → `database/migrate.php` |
 | Run tests | `php bin\test.php` |
 | Upload config | `config/app.php` → `uploads` |
 | Request files | `Request::files('attachments')` |
@@ -558,6 +556,6 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Framework tests only | `php tests\run.php tests\Framework` |
 | App unit tests only | `php tests\run.php tests\App` |
 | HTTP handlers | `app/Http/` (attribute routes) |
-| Route registration | `$app->registerRoutes()` in `routes/web.php` |
+| Route registration | `$app->registerRoutes()` in `public/index.php` |
 | Human-oriented overview | `README.md` |
 | Test layout | `tests/README.md` |

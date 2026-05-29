@@ -10,7 +10,7 @@ use App\Models\SchoolClass;
 use Framework\Auth;
 use Framework\Controller;
 use Framework\Middleware\Authenticate;
-use Framework\Middleware\RequireAdmin;
+use App\Middleware\RequireAdmin;
 use Framework\Model\Collection;
 use Framework\Request;
 use Framework\Response;
@@ -18,7 +18,7 @@ use Framework\Routing\Attributes\Get;
 use Framework\Routing\Attributes\Middleware;
 use Framework\Routing\Attributes\Post;
 use Framework\Routing\Attributes\Prefix;
-use Framework\Validation\DtoResult;
+use Framework\Validation\ValidationRedirect;
 
 #[Prefix('/admin')]
 #[Middleware([Authenticate::class, RequireAdmin::class])]
@@ -60,10 +60,9 @@ final class Assignments extends Controller
     {
         $classId = (int) $data->classId;
         if (SchoolClass::find($classId) === null) {
-            return $this->render('admin/assignments/form', $this->formData(
-                ['class_id' => ['Invalid class.']],
-                $request,
-            ));
+            ValidationRedirect::storeRequestErrors($request, ['class_id' => ['Invalid class.']]);
+
+            return $this->redirect('/admin/assignments/create');
         }
 
         Assignment::create([
@@ -81,7 +80,7 @@ final class Assignments extends Controller
     #[Get('/assignments/{assignment}/edit')]
     public function edit(Request $request, Assignment $assignment): Response
     {
-        return $this->render('admin/assignments/form', $this->formData([], null, $assignment));
+        return $this->render('admin/assignments/form', $this->formData($assignment));
     }
 
     #[Post('/assignments/{assignment}')]
@@ -105,26 +104,6 @@ final class Assignments extends Controller
         $this->setFlash('Assignment deleted.');
 
         return $this->redirect('/admin/assignments');
-    }
-
-    public function onValidationFailed(Request $request, DtoResult $result): Response
-    {
-        $path = $request->path();
-
-        if ($path === '/admin/assignments') {
-            return $this->render('admin/assignments/form', $this->formData($result->errors, $request));
-        }
-
-        if (preg_match('#^/admin/assignments/(\d+)$#', $path, $m)) {
-            $assignment = Assignment::find((int) $m[1]);
-            if ($assignment === null) {
-                return Response::html('Not found.', 404);
-            }
-
-            return $this->render('admin/assignments/form', $this->formData($result->errors, $request, $assignment));
-        }
-
-        return Response::html('Validation failed.', 422);
     }
 
     private function adminId(): int
@@ -151,19 +130,22 @@ final class Assignments extends Controller
      * @param array<string, list<string>> $errors
      * @return array<string, mixed>
      */
-    private function formData(
-        array $errors = [],
-        ?Request $request = null,
-        ?Assignment $assignment = null,
-    ): array {
+    private function formData(?Assignment $assignment = null, array $errors = []): array
+    {
         $isEdit = $assignment !== null;
+        $sessionOld = $this->validationOld();
+        $sessionErrors = $this->validationErrors();
 
-        if ($request !== null) {
+        if ($errors === [] && $sessionErrors !== []) {
+            $errors = $sessionErrors;
+        }
+
+        if ($sessionOld !== []) {
             $old = [
-                'class_id' => (string) $request->input('class_id', ''),
-                'title' => (string) $request->input('title', ''),
-                'description' => (string) $request->input('description', ''),
-                'due_at' => (string) $request->input('due_at', ''),
+                'class_id' => (string) ($sessionOld['class_id'] ?? ''),
+                'title' => (string) ($sessionOld['title'] ?? ''),
+                'description' => (string) ($sessionOld['description'] ?? ''),
+                'due_at' => (string) ($sessionOld['due_at'] ?? ''),
             ];
         } elseif ($isEdit) {
             $old = [

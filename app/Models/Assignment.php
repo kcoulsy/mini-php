@@ -18,28 +18,28 @@ final class Assignment extends Model
 {
     #[PrimaryKey]
     #[AutoIncrement]
-    #[Column]
+    #[Column(type: 'integer')]
     public int $id;
 
-    #[Column(name: 'class_id')]
+    #[Column(name: 'class_id', type: 'integer')]
     public int $classId;
 
-    #[Column]
+    #[Column(type: 'text')]
     public string $title;
 
-    #[Column]
+    #[Column(type: 'text')]
     public string $description;
 
-    #[Column(name: 'due_at')]
+    #[Column(name: 'due_at', type: 'text', nullable: true)]
     public ?string $dueAt;
 
-    #[Column(name: 'created_by')]
+    #[Column(name: 'created_by', type: 'integer')]
     public int $createdBy;
 
-    #[Column]
+    #[Column(name: 'created_at', type: 'text')]
     public string $createdAt;
 
-    #[Column]
+    #[Column(name: 'updated_at', type: 'text')]
     public string $updatedAt;
 
     #[BelongsTo(SchoolClass::class, foreignKey: 'class_id', ownerKey: 'id')]

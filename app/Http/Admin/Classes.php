@@ -10,14 +10,14 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use Framework\Controller;
 use Framework\Middleware\Authenticate;
-use Framework\Middleware\RequireAdmin;
+use App\Middleware\RequireAdmin;
 use Framework\Request;
 use Framework\Response;
 use Framework\Routing\Attributes\Get;
 use Framework\Routing\Attributes\Middleware;
 use Framework\Routing\Attributes\Post;
 use Framework\Routing\Attributes\Prefix;
-use Framework\Validation\DtoResult;
+use Framework\Validation\ValidationRedirect;
 
 #[Prefix('/admin')]
 #[Middleware([Authenticate::class, RequireAdmin::class])]
@@ -43,10 +43,9 @@ final class Classes extends Controller
     public function store(Request $request, ClassFormData $data): Response
     {
         if ($data->joinCode !== '' && SchoolClass::joinCodeExists($data->joinCode)) {
-            return $this->render('admin/classes/form', $this->formData(
-                ['join_code' => ['Join code is already in use.']],
-                $request,
-            ));
+            ValidationRedirect::storeRequestErrors($request, ['join_code' => ['Join code is already in use.']]);
+
+            return $this->redirect('/admin/classes/create');
         }
 
         $joinCode = $data->joinCode !== ''
@@ -66,26 +65,16 @@ final class Classes extends Controller
     #[Get('/classes/{schoolClass}/edit')]
     public function edit(Request $request, SchoolClass $schoolClass): Response
     {
-        return $this->render('admin/classes/form', [
-            ...$this->formData([], null, $schoolClass),
-            'teacherIds' => ClassMembership::teacherIdsForClass($schoolClass->id),
-            'students' => ClassMembership::studentsForClass($schoolClass->id),
-            'teachers' => $this->teachersList(),
-            'allStudents' => $this->studentsList(),
-        ]);
+        return $this->render('admin/classes/form', $this->formData($schoolClass));
     }
 
     #[Post('/classes/{schoolClass}')]
     public function update(Request $request, SchoolClass $schoolClass, ClassFormData $data): Response
     {
         if (SchoolClass::joinCodeExists($data->joinCode, $schoolClass->id)) {
-            return $this->render('admin/classes/form', [
-                ...$this->formData(['join_code' => ['Join code is already in use.']], $request, $schoolClass),
-                'teacherIds' => $this->intList($request->input('teacher_ids', [])),
-                'students' => ClassMembership::studentsForClass($schoolClass->id),
-                'teachers' => $this->teachersList(),
-                'allStudents' => $this->studentsList(),
-            ]);
+            ValidationRedirect::storeRequestErrors($request, ['join_code' => ['Join code is already in use.']]);
+
+            return $this->redirect('/admin/classes/' . $schoolClass->id . '/edit');
         }
 
         $schoolClass->update([
@@ -129,32 +118,6 @@ final class Classes extends Controller
         $this->setFlash('Student removed.');
 
         return $this->redirect('/admin/classes/' . $schoolClass->id . '/edit');
-    }
-
-    public function onValidationFailed(Request $request, DtoResult $result): Response
-    {
-        $path = $request->path();
-
-        if ($path === '/admin/classes') {
-            return $this->render('admin/classes/form', $this->formData($result->errors, $request));
-        }
-
-        if (preg_match('#^/admin/classes/(\d+)$#', $path, $m)) {
-            $schoolClass = SchoolClass::find((int) $m[1]);
-            if ($schoolClass === null) {
-                return Response::html('Class not found.', 404);
-            }
-
-            return $this->render('admin/classes/form', [
-                ...$this->formData($result->errors, $request, $schoolClass),
-                'teacherIds' => $this->intList($request->input('teacher_ids', [])),
-                'students' => ClassMembership::studentsForClass($schoolClass->id),
-                'teachers' => $this->teachersList(),
-                'allStudents' => $this->studentsList(),
-            ]);
-        }
-
-        return Response::html('Validation failed.', 422);
     }
 
     private function syncMemberships(int $classId, Request $request): void
@@ -214,17 +177,20 @@ final class Classes extends Controller
      * @param array<string, list<string>> $errors
      * @return array<string, mixed>
      */
-    private function formData(
-        array $errors = [],
-        ?Request $request = null,
-        ?SchoolClass $schoolClass = null,
-    ): array {
+    private function formData(?SchoolClass $schoolClass = null, array $errors = []): array
+    {
         $isEdit = $schoolClass !== null;
+        $sessionOld = $this->validationOld();
+        $sessionErrors = $this->validationErrors();
 
-        if ($request !== null) {
+        if ($errors === [] && $sessionErrors !== []) {
+            $errors = $sessionErrors;
+        }
+
+        if ($sessionOld !== []) {
             $old = [
-                'name' => (string) $request->input('name', ''),
-                'join_code' => (string) $request->input('join_code', ''),
+                'name' => (string) ($sessionOld['name'] ?? ''),
+                'join_code' => (string) ($sessionOld['join_code'] ?? ''),
             ];
         } elseif ($isEdit) {
             $old = [
@@ -242,8 +208,10 @@ final class Classes extends Controller
             'schoolClass' => $schoolClass,
             'formAction' => $isEdit ? '/admin/classes/' . $schoolClass->id : '/admin/classes',
             'cancelHref' => '/admin/classes',
-            'teacherIds' => [],
-            'students' => [],
+            'teacherIds' => isset($sessionOld['teacher_ids'])
+                ? $this->intList($sessionOld['teacher_ids'])
+                : ($isEdit ? ClassMembership::teacherIdsForClass($schoolClass->id) : []),
+            'students' => $isEdit ? ClassMembership::studentsForClass($schoolClass->id) : [],
             'teachers' => $this->teachersList(),
             'allStudents' => $this->studentsList(),
         ];

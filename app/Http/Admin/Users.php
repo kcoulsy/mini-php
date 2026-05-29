@@ -10,14 +10,14 @@ use App\Models\User;
 use Framework\Auth;
 use Framework\Controller;
 use Framework\Middleware\Authenticate;
-use Framework\Middleware\RequireAdmin;
+use App\Middleware\RequireAdmin;
 use Framework\Request;
 use Framework\Response;
 use Framework\Routing\Attributes\Get;
 use Framework\Routing\Attributes\Middleware;
 use Framework\Routing\Attributes\Post;
 use Framework\Routing\Attributes\Prefix;
-use Framework\Validation\DtoResult;
+use Framework\Validation\ValidationRedirect;
 
 #[Prefix('/admin')]
 #[Middleware([Authenticate::class, RequireAdmin::class])]
@@ -64,7 +64,7 @@ final class Users extends Controller
     #[Get('/users/{user}/edit')]
     public function edit(Request $request, User $user): Response
     {
-        return $this->render('admin/users/form', $this->formData([], null, $user));
+        return $this->render('admin/users/form', $this->formData($user));
     }
 
     #[Post('/users/{user}')]
@@ -72,11 +72,9 @@ final class Users extends Controller
     {
         $existing = User::findBy('email', mb_strtolower(trim($data->email)));
         if ($existing !== null && $existing->id !== $user->id) {
-            return $this->render('admin/users/form', $this->formData(
-                ['email' => ['Email is already taken.']],
-                $request,
-                $user,
-            ));
+            ValidationRedirect::storeRequestErrors($request, ['email' => ['Email is already taken.']]);
+
+            return $this->redirect('/admin/users/' . $user->id . '/edit');
         }
 
         if (
@@ -84,11 +82,9 @@ final class Users extends Controller
             && $data->role !== User::ROLE_ADMIN
             && $this->adminCount() <= 1
         ) {
-            return $this->render('admin/users/form', $this->formData(
-                ['_form' => ['Cannot remove the last admin.']],
-                $request,
-                $user,
-            ));
+            ValidationRedirect::storeRequestErrors($request, ['_form' => ['Cannot remove the last admin.']]);
+
+            return $this->redirect('/admin/users/' . $user->id . '/edit');
         }
 
         $password = $data->password;
@@ -127,46 +123,25 @@ final class Users extends Controller
         return $this->redirect('/admin/users');
     }
 
-    public function onValidationFailed(Request $request, DtoResult $result): Response
-    {
-        $path = $request->path();
-
-        if ($path === '/admin/users') {
-            return $this->render('admin/users/form', $this->formData($this->withPasswordMessage($result), $request));
-        }
-
-        if (preg_match('#^/admin/users/(\d+)$#', $path, $m)) {
-            $user = User::find((int) $m[1]);
-            if ($user === null) {
-                return Response::html('User not found.', 404);
-            }
-
-            return $this->render('admin/users/form', $this->formData(
-                $this->withPasswordMessage($result),
-                $request,
-                $user,
-            ));
-        }
-
-        return Response::html('Validation failed.', 422);
-    }
-
     /**
      * @param array<string, list<string>> $errors
      * @return array<string, mixed>
      */
-    private function formData(
-        array $errors = [],
-        ?Request $request = null,
-        ?User $user = null,
-    ): array {
+    private function formData(?User $user = null, array $errors = []): array
+    {
         $isEdit = $user !== null;
+        $sessionOld = $this->validationOld();
+        $sessionErrors = $this->validationErrors();
 
-        if ($request !== null) {
+        if ($errors === [] && $sessionErrors !== []) {
+            $errors = $this->normalizePasswordErrors($sessionErrors);
+        }
+
+        if ($sessionOld !== []) {
             $old = [
-                'email' => (string) $request->input('email', ''),
-                'name' => (string) $request->input('name', ''),
-                'role' => (string) $request->input('role', User::ROLE_STUDENT),
+                'email' => (string) ($sessionOld['email'] ?? ''),
+                'name' => (string) ($sessionOld['name'] ?? ''),
+                'role' => (string) ($sessionOld['role'] ?? User::ROLE_STUDENT),
             ];
         } elseif ($isEdit) {
             $old = [
@@ -190,11 +165,11 @@ final class Users extends Controller
     }
 
     /**
+     * @param array<string, list<string>> $errors
      * @return array<string, list<string>>
      */
-    private function withPasswordMessage(DtoResult $result): array
+    private function normalizePasswordErrors(array $errors): array
     {
-        $errors = $result->errors;
         $minLength = (int) ($this->authConfig['password_min_length'] ?? 8);
 
         if (isset($errors['password'])) {

@@ -22,24 +22,24 @@ final class User extends Model
 
     #[PrimaryKey]
     #[AutoIncrement]
-    #[Column]
+    #[Column(type: 'integer')]
     public int $id;
 
-    #[Column]
+    #[Column(type: 'text')]
     public string $email;
 
-    #[Column]
+    #[Column(type: 'text')]
     public string $password;
 
-    #[Column]
+    #[Column(type: 'text')]
     public string $name;
 
-    #[Column]
+    #[Column(type: 'text')]
     public string $role;
 
-    #[Column]
+    #[Column(name: 'created_at', type: 'text')]
     public string $createdAt;
 
-    #[Column]
+    #[Column(name: 'updated_at', type: 'text')]
     public string $updatedAt;
 }

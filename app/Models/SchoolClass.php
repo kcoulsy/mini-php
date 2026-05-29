@@ -18,19 +18,19 @@ final class SchoolClass extends Model
 {
     #[PrimaryKey]
     #[AutoIncrement]
-    #[Column]
+    #[Column(type: 'integer')]
     public int $id;
 
-    #[Column]
+    #[Column(type: 'text')]
     public string $name;
 
-    #[Column(name: 'join_code')]
+    #[Column(name: 'join_code', type: 'text')]
     public string $joinCode;
 
-    #[Column]
+    #[Column(name: 'created_at', type: 'text')]
     public string $createdAt;
 
-    #[Column]
+    #[Column(name: 'updated_at', type: 'text')]
     public string $updatedAt;
 
     #[HasMany(Assignment::class, foreignKey: 'class_id', localKey: 'id')]

@@ -35,4 +35,16 @@ abstract class Controller
   {
     return Response::redirect($path);
   }
+
+  /** @return array<string, list<string>> */
+  protected function validationErrors(): array
+  {
+    return \Framework\Validation\ValidationRedirect::pullErrors();
+  }
+
+  /** @return array<string, mixed> */
+  protected function validationOld(): array
+  {
+    return \Framework\Validation\ValidationRedirect::pullOld();
+  }
 }

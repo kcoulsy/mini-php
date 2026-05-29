@@ -12,10 +12,8 @@ I wanted to test out composer 2.5 and got carried away and ended up building out
 ## Project layout
 
 ```
-public/          Document root (front controller)
-bootstrap/       Application bootstrap
+public/          Document root (`index.php` front controller)
 config/          Configuration
-routes/          Route definitions
 framework/       Framework core (+ framework/Testing for test helpers)
 tests/           Unit & feature tests (see tests/README.md)
 bin/migrate.php  Apply pending database migrations
@@ -33,7 +31,7 @@ storage/         SQLite database file
 From the project root, using PHP's built-in server:
 
 ```cmd
-php -S localhost:8000 -t public public/router.php
+php -S localhost:8000 -t public public/index.php
 ```
 
 Open [http://localhost:8000/](http://localhost:8000/) — guests are sent to login; register as a **student** or log in. Teachers and admins are created in the admin UI (or via CLI below).
@@ -68,7 +66,7 @@ Apply schema changes with:
 php bin\migrate.php
 ```
 
-Migrations also run automatically on app bootstrap. If you hit errors on a very old database file, delete `storage/database.sqlite` and run `php bin\migrate.php` again.
+If you hit errors on a very old database file, delete `storage/database.sqlite` and run `php bin\migrate.php` again.
 
 ### Apache
 
@@ -76,11 +74,10 @@ Point the virtual host document root at `public/`. `public/.htaccess` rewrites a
 
 ## Request flow
 
-1. `public/index.php` — front controller
-2. `bootstrap/app.php` — autoloader, config, database, routes
-3. `Router` matches method + path, calls controller
-4. Controller uses `Model` + `View`, returns `Response`
-5. Response is sent to the client
+1. `public/index.php` — autoload, config, session, routes
+2. `Router` matches method + path, calls controller
+3. Controller uses `Model` + `View`, returns `Response`
+4. Response is sent to the client
 
 ## View scripts
 

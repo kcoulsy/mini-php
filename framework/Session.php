@@ -13,7 +13,7 @@ final class Session
 
     public const string USER_KEY = '_user_id';
 
-    public const string INTENDED_URL_KEY = 'url.intended';
+    public const string INTENDED_URL_KEY = '_intended_url';
 
     /**
      * @param array<string, mixed> $config

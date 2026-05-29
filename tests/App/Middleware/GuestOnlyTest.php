@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\Framework\Middleware;
+namespace Tests\App\Middleware;
 
+use App\Middleware\GuestOnly;
 use Framework\Auth;
-use Framework\Middleware\GuestOnly;
 use Framework\Request;
 use Framework\Session;
 use Tests\Support\DatabaseTestCase;

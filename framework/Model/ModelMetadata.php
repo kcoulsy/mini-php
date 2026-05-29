@@ -90,14 +90,19 @@ final class ModelMetadata
             }
 
             $columnAttr = $property->getAttributes(Column::class)[0] ?? null;
-            $columnName = $columnAttr !== null
-                ? ($columnAttr->newInstance()->name ?? self::snakeCase($name))
-                : self::snakeCase($name);
+            $column = $columnAttr?->newInstance();
+            $columnName = $column?->name ?? self::snakeCase($name);
 
             $typeName = $property->getType();
             $phpType = $typeName !== null ? (string) $typeName : 'mixed';
 
-            $columns[$name] = new ColumnInfo($name, $columnName, $phpType);
+            $dbType = $column?->type;
+            $nullable = $column?->nullable;
+            if ($nullable === null) {
+                $nullable = str_contains($phpType, '?') || str_contains(strtolower($phpType), 'null');
+            }
+
+            $columns[$name] = new ColumnInfo($name, $columnName, $phpType, $dbType, $nullable);
 
             if ($property->getAttributes(PrimaryKey::class) !== []) {
                 $primaryKey = $columnName;
@@ -173,6 +178,8 @@ final class ColumnInfo
         public readonly string $property,
         public readonly string $column,
         public readonly string $phpType,
+        public readonly ?string $dbType = null,
+        public readonly bool $nullable = false,
     ) {
     }
 }

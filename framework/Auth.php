@@ -43,8 +43,22 @@ final class Auth
     public static function logout(): void
     {
         self::ensureSession();
-        unset($_SESSION[Session::USER_KEY]);
+        unset($_SESSION[Session::USER_KEY], $_SESSION[Session::INTENDED_URL_KEY]);
         self::regenerateSessionId();
+    }
+
+    public static function pullIntendedUrl(): ?string
+    {
+        self::ensureSession();
+
+        $url = $_SESSION[Session::INTENDED_URL_KEY] ?? null;
+        unset($_SESSION[Session::INTENDED_URL_KEY]);
+
+        if (!is_string($url) || !self::isSafePath($url)) {
+            return null;
+        }
+
+        return $url;
     }
 
     public static function attempt(string $email, string $password): bool
@@ -60,45 +74,6 @@ final class Auth
         return true;
     }
 
-    public static function role(): ?string
-    {
-        $user = self::user();
-
-        return $user?->role;
-    }
-
-    public static function isStudent(): bool
-    {
-        return self::role() === User::ROLE_STUDENT;
-    }
-
-    public static function isTeacher(): bool
-    {
-        return self::role() === User::ROLE_TEACHER;
-    }
-
-    public static function isAdmin(): bool
-    {
-        return self::role() === User::ROLE_ADMIN;
-    }
-
-    public static function homePath(): string
-    {
-        return match (self::role()) {
-            User::ROLE_ADMIN => '/admin',
-            User::ROLE_TEACHER => '/teach',
-            default => '/student',
-        };
-    }
-
-    /** @param list<string> $roles */
-    public static function hasRole(string ...$roles): bool
-    {
-        $role = self::role();
-
-        return $role !== null && in_array($role, $roles, true);
-    }
-
     private static function ensureSession(): void
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -111,5 +86,12 @@ final class Auth
         if (!headers_sent()) {
             session_regenerate_id(true);
         }
+    }
+
+    private static function isSafePath(string $path): bool
+    {
+        return str_starts_with($path, '/')
+            && !str_starts_with($path, '//')
+            && !str_contains($path, "\0");
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http;
 
 use App\Authorization;
+use App\CurrentUser;
 use App\Data\AssignmentFormData;
 use App\Data\GradeSubmissionData;
 use App\Middleware\RequireTeacher;
@@ -274,7 +275,7 @@ final class Teach extends Controller
 
     private function canManageClass(int $classId): bool
     {
-        return Authorization::canManageClass($this->userId(), $classId) || Auth::isAdmin();
+        return Authorization::canManageClass($this->userId(), $classId) || CurrentUser::isAdmin();
     }
 
     private static function normalizeDueAt(?string $dueAt): ?string

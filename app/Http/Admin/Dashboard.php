@@ -9,7 +9,7 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use Framework\Controller;
 use Framework\Middleware\Authenticate;
-use Framework\Middleware\RequireAdmin;
+use App\Middleware\RequireAdmin;
 use Framework\Request;
 use Framework\Response;
 use Framework\Routing\Attributes\Get;

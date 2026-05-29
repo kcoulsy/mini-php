@@ -18,34 +18,34 @@ final class Submission extends Model
 {
     #[PrimaryKey]
     #[AutoIncrement]
-    #[Column]
+    #[Column(type: 'integer')]
     public int $id;
 
-    #[Column(name: 'assignment_id')]
+    #[Column(name: 'assignment_id', type: 'integer')]
     public int $assignmentId;
 
-    #[Column(name: 'student_id')]
+    #[Column(name: 'student_id', type: 'integer')]
     public int $studentId;
 
-    #[Column(name: 'submitted_at')]
+    #[Column(name: 'submitted_at', type: 'text', nullable: true)]
     public ?string $submittedAt;
 
-    #[Column(name: 'grade_score')]
+    #[Column(name: 'grade_score', type: 'real', nullable: true)]
     public ?float $gradeScore;
 
-    #[Column(name: 'grade_feedback')]
+    #[Column(name: 'grade_feedback', type: 'text')]
     public string $gradeFeedback;
 
-    #[Column(name: 'graded_by')]
+    #[Column(name: 'graded_by', type: 'integer', nullable: true)]
     public ?int $gradedBy;
 
-    #[Column(name: 'graded_at')]
+    #[Column(name: 'graded_at', type: 'text', nullable: true)]
     public ?string $gradedAt;
 
-    #[Column]
+    #[Column(name: 'created_at', type: 'text')]
     public string $createdAt;
 
-    #[Column]
+    #[Column(name: 'updated_at', type: 'text')]
     public string $updatedAt;
 
     #[BelongsTo(Assignment::class, foreignKey: 'assignment_id', ownerKey: 'id')]

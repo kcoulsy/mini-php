@@ -1,5 +1,6 @@
 <?php
 
+use App\CurrentUser;
 use Framework\Auth;
 use Framework\View;
 
@@ -23,7 +24,7 @@ $user = Auth::user();
 <body>
     <header class="site-header">
         <div class="container">
-            <a href="<?= Auth::check() ? Auth::homePath() : '/login' ?>" class="logo">Homework</a>
+            <a href="<?= Auth::check() ? CurrentUser::homePath() : '/login' ?>" class="logo">Homework</a>
             <nav>
                 <?php if (Auth::check() && $user !== null): ?>
                     <?php require dirname(__DIR__) . '/_nav.php'; ?>

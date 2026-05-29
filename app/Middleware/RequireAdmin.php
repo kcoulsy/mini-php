@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Framework\Middleware;
+namespace App\Middleware;
 
-use App\Models\User;
+use App\CurrentUser;
 use Framework\Auth;
+use Framework\Middleware\Authenticate;
 use Framework\Request;
 use Framework\Response;
 
@@ -17,7 +18,7 @@ final class RequireAdmin
             return (new Authenticate())($request);
         }
 
-        if (!Auth::isAdmin()) {
+        if (!CurrentUser::isAdmin()) {
             return Response::html('Forbidden.', 403);
         }
 

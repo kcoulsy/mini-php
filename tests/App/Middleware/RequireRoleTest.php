@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Framework\Middleware;
+namespace Tests\App\Middleware;
 
+use App\Middleware\RequireRole;
 use App\Models\User;
 use Framework\Auth;
-use Framework\Middleware\RequireRole;
 use Framework\Request;
 use Framework\Session;
 use Tests\Support\DatabaseTestCase;

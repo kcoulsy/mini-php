@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Middleware;
 
 use App\Models\User;
-use Framework\Middleware\RequireRole;
+use App\Middleware\RequireRole;
 use Framework\Request;
 use Framework\Response;
 

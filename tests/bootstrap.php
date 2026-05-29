@@ -37,7 +37,8 @@ function createTestApplication(): App
     $app = new App($config);
 
     require BASE_PATH . '/database/migrate.php';
-    require BASE_PATH . '/routes/web.php';
+
+    $app->registerRoutes();
 
     return $app;
 }

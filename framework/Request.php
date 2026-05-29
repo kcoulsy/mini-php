@@ -17,6 +17,7 @@ final class Request
     private readonly array $query,
     private readonly array $body,
     private readonly array $files = [],
+    private readonly ?string $referer = null,
   ) {}
 
   public static function capture(): self
@@ -25,12 +26,15 @@ final class Request
     $uri = $_SERVER['REQUEST_URI'] ?? '/';
     $path = parse_url($uri, PHP_URL_PATH) ?: '/';
 
+    $referer = $_SERVER['HTTP_REFERER'] ?? null;
+
     return self::from(
       $method,
       $path,
       $_GET,
       $method === 'POST' ? $_POST : [],
       self::captureFiles(),
+      is_string($referer) ? $referer : null,
     );
   }
 
@@ -77,10 +81,11 @@ final class Request
     array $query = [],
     array $body = [],
     array $files = [],
+    ?string $referer = null,
   ): self {
     $path = rtrim($path, '/') ?: '/';
 
-    return new self(strtoupper($method), $path, $query, $body, $files);
+    return new self(strtoupper($method), $path, $query, $body, $files, $referer);
   }
 
   public function method(): string
@@ -91,6 +96,21 @@ final class Request
   public function path(): string
   {
     return $this->path;
+  }
+
+  public function referer(): ?string
+  {
+    if ($this->referer === null || $this->referer === '') {
+      return null;
+    }
+
+    $path = parse_url($this->referer, PHP_URL_PATH);
+
+    if (!is_string($path) || $path === '') {
+      return null;
+    }
+
+    return rtrim($path, '/') ?: '/';
   }
 
   public function query(string $key, mixed $default = null): mixed

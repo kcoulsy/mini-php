@@ -16,25 +16,25 @@ final class SubmissionFile extends Model
 {
     #[PrimaryKey]
     #[AutoIncrement]
-    #[Column]
+    #[Column(type: 'integer')]
     public int $id;
 
-    #[Column(name: 'submission_id')]
+    #[Column(name: 'submission_id', type: 'integer')]
     public int $submissionId;
 
-    #[Column(name: 'stored_path')]
+    #[Column(name: 'stored_path', type: 'text')]
     public string $storedPath;
 
-    #[Column(name: 'original_name')]
+    #[Column(name: 'original_name', type: 'text')]
     public string $originalName;
 
-    #[Column(name: 'mime_type')]
+    #[Column(name: 'mime_type', type: 'text')]
     public string $mimeType;
 
-    #[Column(name: 'size_bytes')]
+    #[Column(name: 'size_bytes', type: 'integer')]
     public int $sizeBytes;
 
-    #[Column]
+    #[Column(name: 'created_at', type: 'text')]
     public string $createdAt;
 
     #[BelongsTo(Submission::class, foreignKey: 'submission_id', ownerKey: 'id')]
