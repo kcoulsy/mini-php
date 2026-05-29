@@ -19,14 +19,7 @@ final class ControllerTest extends TestCase
         file_put_contents($dir . '/layouts/main.php', '<?= $unsafe_content ?>');
         file_put_contents($dir . '/page.php', '<p><?= $title ?></p>');
 
-        $controller = new class (new View($dir)) extends Controller {
-            public function page(): Response
-            {
-                return $this->render('page', ['title' => 'Hello']);
-            }
-        };
-
-        $response = $controller->page();
+        $response = (new PageTestController(new View($dir)))->page();
 
         $this->assertEquals(200, $response->status());
         $this->assertContains('<p>Hello</p>', $response->body());
@@ -34,16 +27,68 @@ final class ControllerTest extends TestCase
 
     public function testRedirectUsesResponseRedirect(): void
     {
-        $controller = new class (new View(sys_get_temp_dir())) extends Controller {
-            public function go(): Response
-            {
-                return $this->redirect('/items');
-            }
-        };
-
-        $response = $controller->go();
+        $response = (new RedirectTestController(new View(sys_get_temp_dir())))->go();
 
         $this->assertEquals(302, $response->status());
         $this->assertEquals('/items', $response->header('Location'));
+    }
+
+    public function testFlashIsConsumedOnce(): void
+    {
+        $_SESSION['flash'] = 'Saved.';
+
+        $controller = new FlashReadTestController(new View(sys_get_temp_dir()));
+
+        $this->assertEquals('Saved.', $controller->read());
+        $this->assertNull($controller->read());
+    }
+
+    public function testSetFlashStoresMessageForNextRead(): void
+    {
+        unset($_SESSION['flash']);
+
+        $controller = new FlashWriteReadTestController(new View(sys_get_temp_dir()));
+
+        $this->assertEquals('Done.', $controller->writeAndRead());
+        $this->assertNull($controller->readAgain());
+    }
+}
+
+final class PageTestController extends Controller
+{
+    public function page(): Response
+    {
+        return $this->render('page', ['title' => 'Hello']);
+    }
+}
+
+final class RedirectTestController extends Controller
+{
+    public function go(): Response
+    {
+        return $this->redirect('/items');
+    }
+}
+
+final class FlashReadTestController extends Controller
+{
+    public function read(): ?string
+    {
+        return $this->flash();
+    }
+}
+
+final class FlashWriteReadTestController extends Controller
+{
+    public function writeAndRead(): ?string
+    {
+        $this->setFlash('Done.');
+
+        return $this->flash();
+    }
+
+    public function readAgain(): ?string
+    {
+        return $this->flash();
     }
 }

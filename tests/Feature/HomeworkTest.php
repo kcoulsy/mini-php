@@ -41,7 +41,10 @@ final class HomeworkTest extends ApplicationTestCase
         ]);
         $this->assertRedirect($submit, '/student/assignments/' . $assignmentId);
 
-        $submission = Submission::findForStudent($assignmentId, $studentId);
+        $submission = Submission::query()
+            ->where('assignment_id', $assignmentId)
+            ->where('student_id', $studentId)
+            ->first();
         $this->assertNotNull($submission);
     }
 
@@ -58,19 +61,22 @@ final class HomeworkTest extends ApplicationTestCase
             'attachments' => [$this->fakeUpload('hw.jpg')],
         ]);
 
-        $submission = Submission::findForStudent($assignmentId, $studentId);
+        $submission = Submission::query()
+            ->where('assignment_id', $assignmentId)
+            ->where('student_id', $studentId)
+            ->first();
         $this->assertNotNull($submission);
 
         $this->actingAs($teacherId);
-        $grade = $this->post('/teach/submissions/' . $submission['id'] . '/grade', [
+        $grade = $this->post('/teach/submissions/' . $submission->id . '/grade', [
             'grade_score' => '88',
             'grade_feedback' => 'Good work.',
         ]);
-        $this->assertRedirect($grade, '/teach/submissions/' . $submission['id']);
+        $this->assertRedirect($grade, '/teach/submissions/' . $submission->id);
 
-        $updated = Submission::find((int) $submission['id']);
+        $updated = Submission::find($submission->id);
         $this->assertNotNull($updated);
-        $this->assertEquals(88.0, (float) $updated['grade_score']);
+        $this->assertEquals(88.0, (float) $updated->gradeScore);
     }
 
     public function testStudentCannotAccessTeachRoutes(): void
@@ -94,7 +100,7 @@ final class HomeworkTest extends ApplicationTestCase
         ]);
 
         $this->assertRedirect($response, '/admin/users');
-        $this->assertNotNull(User::findByEmail('newteacher@example.com'));
+        $this->assertNotNull(User::findBy('email', mb_strtolower(trim('newteacher@example.com'))));
     }
 
     public function testCrossStudentCannotViewOtherClass(): void

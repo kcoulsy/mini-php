@@ -15,8 +15,8 @@ final class RequireRoleTest extends DatabaseTestCase
 {
     public function testAllowsMatchingRole(): void
     {
-        $id = User::createWithRole('t@example.com', 'password123', User::ROLE_TEACHER);
-        Auth::login($id);
+        $user = $this->createUser('t@example.com', 'password123', '', User::ROLE_TEACHER);
+        Auth::login($user->id);
 
         $middleware = RequireRole::allowing(User::ROLE_TEACHER, User::ROLE_ADMIN);
         $this->assertNull($middleware(Request::from('GET', '/teach')));
@@ -24,8 +24,8 @@ final class RequireRoleTest extends DatabaseTestCase
 
     public function testForbiddenForWrongRole(): void
     {
-        $id = User::createWithRole('s@example.com', 'password123', User::ROLE_STUDENT);
-        Auth::login($id);
+        $user = $this->createUser('s@example.com', 'password123', '', User::ROLE_STUDENT);
+        Auth::login($user->id);
 
         $middleware = RequireRole::allowing(User::ROLE_TEACHER);
         $response = $middleware(Request::from('GET', '/teach'));

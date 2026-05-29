@@ -4,15 +4,7 @@ use Framework\Auth;
 use Framework\View;
 
 /**
- * @var array{
- *     id: int|string,
- *     email: string,
- *     password: string,
- *     name: string,
- *     role: string,
- *     created_at: string,
- *     updated_at: string
- * }|null $user
+ * @var \App\Models\User|null $user
  * @var string $unsafe_content
  * @var string $unsafe_scripts
  * @var string|null $title
@@ -33,9 +25,9 @@ $user = Auth::user();
         <div class="container">
             <a href="<?= Auth::check() ? Auth::homePath() : '/login' ?>" class="logo">Homework</a>
             <nav>
-                <?php if (Auth::check() && is_array($user)): ?>
+                <?php if (Auth::check() && $user !== null): ?>
                     <?php require dirname(__DIR__) . '/_nav.php'; ?>
-                    <span class="nav-user"><?= View::e((string) ($user['name'] !== '' ? $user['name'] : $user['email'])) ?></span>
+                    <span class="nav-user"><?= View::e($user->name !== '' ? $user->name : $user->email) ?></span>
                     <form method="post" action="/logout" class="nav-logout">
                         <?= View::csrfField() ?>
                         <button type="submit" class="btn btn-ghost">Log out</button>

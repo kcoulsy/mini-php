@@ -1,20 +1,20 @@
 <?php
 
 /**
- * @var array{id: int|string, name: string, join_code: string, created_at: string, updated_at: string} $schoolClass
- * @var list<array{id: int|string, class_id: int|string, title: string, description: string, due_at: string|null, created_by: int|string, created_at: string, updated_at: string}> $assignments
- * @var list<array{id: int|string, email: string, name: string, role: string}> $students
+ * @var object $schoolClass
+ * @var list<object> $assignments
+ * @var list<object> $students
  */
-$cid = (int) $schoolClass['id'];
+$cid = (int) $schoolClass->id;
 ?>
 
 <section class="page-head">
-    <h1><?= $schoolClass['name'] ?></h1>
+    <h1><?= $schoolClass->name ?></h1>
     <a href="/teach/classes/<?= $cid ?>/assignments/create" class="btn btn-primary">New assignment</a>
     <a href="/teach" class="btn btn-ghost">Back</a>
 </section>
 
-<p class="muted">Share join code <code><?= $schoolClass['join_code'] ?></code> with students.</p>
+<p class="muted">Share join code <code><?= $schoolClass->joinCode ?></code> with students.</p>
 
 <h2>Assignments</h2>
 <?php if ($assignments === []): ?>
@@ -31,11 +31,11 @@ $cid = (int) $schoolClass['id'];
         <tbody>
             <?php foreach ($assignments as $assignment): ?>
                 <tr>
-                    <td><?= $assignment['title'] ?></td>
-                    <td class="muted"><?= $assignment['due_at'] ?? '—' ?></td>
+                    <td><?= $assignment->title ?></td>
+                    <td class="muted"><?= $assignment->dueAt ?? '—' ?></td>
                     <td class="actions">
-                        <a href="/teach/classes/<?= $cid ?>/assignments/<?= (int) $assignment['id'] ?>/submissions">Submissions</a>
-                        <a href="/teach/classes/<?= $cid ?>/assignments/<?= (int) $assignment['id'] ?>/edit">Edit</a>
+                        <a href="/teach/classes/<?= $cid ?>/assignments/<?= (int) $assignment->id ?>/submissions">Submissions</a>
+                        <a href="/teach/classes/<?= $cid ?>/assignments/<?= (int) $assignment->id ?>/edit">Edit</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -49,7 +49,7 @@ $cid = (int) $schoolClass['id'];
 <?php else: ?>
     <ul>
         <?php foreach ($students as $student): ?>
-            <li><?= $student['name'] !== '' ? $student['name'] : $student['email'] ?></li>
+            <li><?= $student->name !== '' ? $student->name : $student->email ?></li>
         <?php endforeach; ?>
     </ul>
 <?php endif; ?>

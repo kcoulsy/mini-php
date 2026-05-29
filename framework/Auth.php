@@ -6,9 +6,6 @@ namespace Framework;
 
 use App\Models\User;
 
-/**
- * @phpstan-import-type UserRow from App\Models\User
- */
 final class Auth
 {
     public static function check(): bool
@@ -29,8 +26,7 @@ final class Auth
         return (int) $_SESSION[Session::USER_KEY];
     }
 
-    /** @return UserRow|null */
-    public static function user(): ?array
+    public static function user(): ?User
     {
         $id = self::id();
 
@@ -53,13 +49,13 @@ final class Auth
 
     public static function attempt(string $email, string $password): bool
     {
-        $user = User::findByEmail($email);
+        $user = User::findBy('email', mb_strtolower(trim($email)));
 
-        if ($user === null || !password_verify($password, (string) $user['password'])) {
+        if ($user === null || !password_verify($password, $user->password)) {
             return false;
         }
 
-        self::login((int) $user['id']);
+        self::login($user->id);
 
         return true;
     }
@@ -68,7 +64,7 @@ final class Auth
     {
         $user = self::user();
 
-        return $user === null ? null : (string) ($user['role'] ?? User::ROLE_STUDENT);
+        return $user?->role;
     }
 
     public static function isStudent(): bool

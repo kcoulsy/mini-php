@@ -1,13 +1,7 @@
 <?php
 
 /**
- * @var list<array{
- *     id: int|string,
- *     name: string,
- *     join_code: string,
- *     created_at: string,
- *     updated_at: string
- * }> $classes
+ * @var list<object> $classes
  */
 ?>
 
@@ -29,9 +23,9 @@
         <tbody>
             <?php foreach ($classes as $schoolClass): ?>
                 <tr>
-                    <td><a href="/teach/classes/<?= (int) $schoolClass['id'] ?>"><?= $schoolClass['name'] ?></a></td>
-                    <td class="muted"><code><?= $schoolClass['join_code'] ?></code></td>
-                    <td class="actions"><a href="/teach/classes/<?= (int) $schoolClass['id'] ?>">Manage</a></td>
+                    <td><a href="/teach/classes/<?= (int) $schoolClass->id ?>"><?= $schoolClass->name ?></a></td>
+                    <td class="muted"><code><?= $schoolClass->joinCode ?></code></td>
+                    <td class="actions"><a href="/teach/classes/<?= (int) $schoolClass->id ?>">Manage</a></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

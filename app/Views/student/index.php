@@ -3,13 +3,7 @@
 use Framework\View;
 
 /**
- * @var list<array{
- *     id: int|string,
- *     name: string,
- *     join_code: string,
- *     created_at: string,
- *     updated_at: string
- * }> $classes
+ * @var list<object> $classes
  */
 ?>
 
@@ -41,8 +35,8 @@ use Framework\View;
         <tbody>
             <?php foreach ($classes as $schoolClass): ?>
                 <tr>
-                    <td><a href="/student/classes/<?= (int) $schoolClass['id'] ?>"><?= $schoolClass['name'] ?></a></td>
-                    <td class="actions"><a href="/student/classes/<?= (int) $schoolClass['id'] ?>">View assignments</a></td>
+                    <td><a href="/student/classes/<?= (int) $schoolClass->id ?>"><?= $schoolClass->name ?></a></td>
+                    <td class="actions"><a href="/student/classes/<?= (int) $schoolClass->id ?>">View assignments</a></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

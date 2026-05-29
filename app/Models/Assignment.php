@@ -4,134 +4,59 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Framework\Database;
+use Framework\Model\Attributes\AutoIncrement;
+use Framework\Model\Attributes\BelongsTo;
+use Framework\Model\Attributes\Column;
+use Framework\Model\Attributes\HasMany;
+use Framework\Model\Attributes\PrimaryKey;
+use Framework\Model\Attributes\Table;
+use Framework\Model\Collection;
+use Framework\Model\Model;
 
-/**
- * @phpstan-type AssignmentRow array{
- *     id: int|string,
- *     class_id: int|string,
- *     title: string,
- *     description: string,
- *     due_at: string|null,
- *     created_by: int|string,
- *     created_at: string,
- *     updated_at: string
- * }
- */
-final class Assignment
+#[Table('assignments')]
+final class Assignment extends Model
 {
-    /** @return list<AssignmentRow> */
-    public static function forClass(int $classId): array
+    #[PrimaryKey]
+    #[AutoIncrement]
+    #[Column]
+    public int $id;
+
+    #[Column(name: 'class_id')]
+    public int $classId;
+
+    #[Column]
+    public string $title;
+
+    #[Column]
+    public string $description;
+
+    #[Column(name: 'due_at')]
+    public ?string $dueAt;
+
+    #[Column(name: 'created_by')]
+    public int $createdBy;
+
+    #[Column]
+    public string $createdAt;
+
+    #[Column]
+    public string $updatedAt;
+
+    #[BelongsTo(SchoolClass::class, foreignKey: 'class_id', ownerKey: 'id')]
+    public SchoolClass $schoolClass;
+
+    #[BelongsTo(User::class, foreignKey: 'created_by', ownerKey: 'id')]
+    public User $creator;
+
+    #[HasMany(Submission::class, foreignKey: 'assignment_id', localKey: 'id')]
+    public Collection $submissions;
+
+    public function isPastDue(): bool
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT * FROM assignments WHERE class_id = :class_id ORDER BY id DESC'
-        );
-        $stmt->execute(['class_id' => $classId]);
-
-        return $stmt->fetchAll();
-    }
-
-    /** @return list<AssignmentRow> */
-    public static function all(): array
-    {
-        $stmt = Database::pdo()->query(
-            'SELECT * FROM assignments ORDER BY class_id ASC, id DESC'
-        );
-
-        return $stmt->fetchAll();
-    }
-
-    /** @return AssignmentRow|null */
-    public static function find(int $id): ?array
-    {
-        $stmt = Database::pdo()->prepare('SELECT * FROM assignments WHERE id = :id LIMIT 1');
-        $stmt->execute(['id' => $id]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : $row;
-    }
-
-    /** @return AssignmentRow|null */
-    public static function findForClass(int $id, int $classId): ?array
-    {
-        $stmt = Database::pdo()->prepare(
-            'SELECT * FROM assignments WHERE id = :id AND class_id = :class_id LIMIT 1'
-        );
-        $stmt->execute(['id' => $id, 'class_id' => $classId]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : $row;
-    }
-
-    public static function create(
-        int $classId,
-        string $title,
-        string $description,
-        ?string $dueAt,
-        int $createdBy,
-    ): int {
-        $stmt = Database::pdo()->prepare(
-            'INSERT INTO assignments (class_id, title, description, due_at, created_by)
-             VALUES (:class_id, :title, :description, :due_at, :created_by)'
-        );
-        $stmt->execute([
-            'class_id' => $classId,
-            'title' => trim($title),
-            'description' => trim($description),
-            'due_at' => self::normalizeDueAt($dueAt),
-            'created_by' => $createdBy,
-        ]);
-
-        return (int) Database::pdo()->lastInsertId();
-    }
-
-    public static function update(
-        int $id,
-        int $classId,
-        string $title,
-        string $description,
-        ?string $dueAt,
-    ): bool {
-        $stmt = Database::pdo()->prepare(
-            'UPDATE assignments SET title = :title, description = :description, due_at = :due_at,
-             updated_at = datetime(\'now\') WHERE id = :id AND class_id = :class_id'
-        );
-        $stmt->execute([
-            'id' => $id,
-            'class_id' => $classId,
-            'title' => trim($title),
-            'description' => trim($description),
-            'due_at' => self::normalizeDueAt($dueAt),
-        ]);
-
-        return $stmt->rowCount() > 0;
-    }
-
-    public static function delete(int $id, int $classId): bool
-    {
-        $stmt = Database::pdo()->prepare(
-            'DELETE FROM assignments WHERE id = :id AND class_id = :class_id'
-        );
-        $stmt->execute(['id' => $id, 'class_id' => $classId]);
-
-        return $stmt->rowCount() > 0;
-    }
-
-    public static function isPastDue(?string $dueAt): bool
-    {
-        if ($dueAt === null || $dueAt === '') {
+        if ($this->dueAt === null || $this->dueAt === '') {
             return false;
         }
 
-        return strtotime($dueAt) < time();
-    }
-
-    public static function normalizeDueAt(?string $dueAt): ?string
-    {
-        if ($dueAt === null || trim($dueAt) === '') {
-            return null;
-        }
-
-        return trim($dueAt);
+        return strtotime($this->dueAt) < time();
     }
 }

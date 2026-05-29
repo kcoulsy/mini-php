@@ -7,14 +7,14 @@ use Framework\View;
  * @var array{name: string, join_code: string} $old
  * @var string $formAction
  * @var string $cancelHref
- * @var array<string, mixed>|null $schoolClass
+ * @var object|null $schoolClass
  * @var list<int> $teacherIds
- * @var list<array{id: int|string, email: string, name: string, role: string}> $teachers
- * @var list<array{id: int|string, email: string, name: string, role: string}> $students
- * @var list<array{id: int|string, email: string, name: string, role: string}> $allStudents
+ * @var list<object> $teachers
+ * @var list<object> $students
+ * @var list<object> $allStudents
  */
 $isEdit = $schoolClass !== null;
-$classId = $isEdit ? (int) $schoolClass['id'] : 0;
+$classId = $isEdit ? (int) $schoolClass->id : 0;
 ?>
 
 <form method="post" action="<?= $formAction ?>" class="card form-card">
@@ -36,12 +36,12 @@ $classId = $isEdit ? (int) $schoolClass['id'] : 0;
     <fieldset>
         <legend>Teachers</legend>
         <?php foreach ($teachers as $teacher): ?>
-            <?php $tid = (int) $teacher['id']; ?>
+            <?php $tid = (int) $teacher->id; ?>
             <label class="checkbox-label">
                 <input type="checkbox" name="teacher_ids[]" value="<?= $tid ?>"
                     <?= in_array($tid, $teacherIds, true) ? 'checked' : '' ?>>
-                <?= $teacher['name'] !== '' ? $teacher['name'] : $teacher['email'] ?>
-                (<?= $teacher['role'] ?>)
+                <?= $teacher->name !== '' ? $teacher->name : $teacher->email ?>
+                (<?= $teacher->role ?>)
             </label>
         <?php endforeach; ?>
     </fieldset>
@@ -67,9 +67,9 @@ $classId = $isEdit ? (int) $schoolClass['id'] : 0;
             <tbody>
                 <?php foreach ($students as $student): ?>
                     <tr>
-                        <td><?= $student['name'] !== '' ? $student['name'] : $student['email'] ?></td>
+                        <td><?= $student->name !== '' ? $student->name : $student->email ?></td>
                         <td class="actions">
-                            <form method="post" action="/admin/classes/<?= $classId ?>/students/<?= (int) $student['id'] ?>/remove" class="inline-form">
+                            <form method="post" action="/admin/classes/<?= $classId ?>/students/<?= (int) $student->id ?>/remove" class="inline-form">
                                 <?= View::csrfField() ?>
                                 <button type="submit" class="link-danger">Remove</button>
                             </form>
@@ -88,8 +88,8 @@ $classId = $isEdit ? (int) $schoolClass['id'] : 0;
             <select name="student_id" required>
                 <option value="">Select…</option>
                 <?php foreach ($allStudents as $student): ?>
-                    <option value="<?= (int) $student['id'] ?>">
-                        <?= $student['name'] !== '' ? $student['name'] : $student['email'] ?>
+                    <option value="<?= (int) $student->id ?>">
+                        <?= $student->name !== '' ? $student->name : $student->email ?>
                     </option>
                 <?php endforeach; ?>
             </select>

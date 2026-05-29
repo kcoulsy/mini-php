@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Framework;
 
-use App\Models\User;
 use Framework\Auth;
 use Framework\Session;
 use Tests\Support\DatabaseTestCase;
@@ -20,18 +19,18 @@ final class AuthTest extends DatabaseTestCase
 
     public function testLoginSetsUserIdInSession(): void
     {
-        $userId = User::create('auth@example.com', 'password123');
+        $user = $this->createUser('auth@example.com', 'password123');
 
-        Auth::login($userId);
+        Auth::login($user->id);
 
         $this->assertTrue(Auth::check());
-        $this->assertEquals($userId, Auth::id());
+        $this->assertEquals($user->id, Auth::id());
     }
 
     public function testLogoutClearsSessionUser(): void
     {
-        $userId = User::create('logout@example.com', 'password123');
-        Auth::login($userId);
+        $user = $this->createUser('logout@example.com', 'password123');
+        Auth::login($user->id);
 
         Auth::logout();
 
@@ -41,15 +40,15 @@ final class AuthTest extends DatabaseTestCase
 
     public function testAttemptSucceedsWithValidCredentials(): void
     {
-        $userId = User::create('attempt@example.com', 'secret-pass');
+        $user = $this->createUser('attempt@example.com', 'secret-pass');
 
         $this->assertTrue(Auth::attempt('attempt@example.com', 'secret-pass'));
-        $this->assertEquals($userId, Auth::id());
+        $this->assertEquals($user->id, Auth::id());
     }
 
     public function testAttemptFailsWithWrongPassword(): void
     {
-        User::create('fail@example.com', 'correct');
+        $this->createUser('fail@example.com', 'correct');
 
         $this->assertFalse(Auth::attempt('fail@example.com', 'wrong'));
         $this->assertFalse(Auth::check());
@@ -57,14 +56,14 @@ final class AuthTest extends DatabaseTestCase
 
     public function testUserReturnsRecordForLoggedInUser(): void
     {
-        $userId = User::create('profile@example.com', 'password123', 'Profile');
+        $user = $this->createUser('profile@example.com', 'password123', 'Profile');
 
-        Auth::login($userId);
+        Auth::login($user->id);
 
-        $user = Auth::user();
+        $sessionUser = Auth::user();
 
-        $this->assertNotNull($user);
-        $this->assertEquals('profile@example.com', $user['email']);
-        $this->assertEquals('Profile', $user['name']);
+        $this->assertNotNull($sessionUser);
+        $this->assertEquals('profile@example.com', $sessionUser->email);
+        $this->assertEquals('Profile', $sessionUser->name);
     }
 }

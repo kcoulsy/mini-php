@@ -11,40 +11,32 @@
  *     created_at: string,
  *     updated_at: string
  * } $assignment
- * @var array<string, mixed>|null $submission
- * @var list<array{
- *     id: int|string,
- *     submission_id: int|string,
- *     stored_path: string,
- *     original_name: string,
- *     mime_type: string,
- *     size_bytes: int|string,
- *     created_at: string
- * }> $files
+ * @var object|null $submission
+ * @var list<object> $files
  * @var bool $canEdit
  * @var array<string, list<string>> $errors
  */
-$aid = (int) $assignment['id'];
-$submissionId = $submission !== null ? (int) $submission['id'] : null;
+$aid = (int) $assignment->id;
+$submissionId = $submission !== null ? (int) $submission->id : null;
 ?>
 
 <section class="page-head">
-    <h1><?= $assignment['title'] ?></h1>
-    <a href="/student/classes/<?= (int) $assignment['class_id'] ?>" class="btn btn-ghost">Back to class</a>
+    <h1><?= $assignment->title ?></h1>
+    <a href="/student/classes/<?= (int) $assignment->classId ?>" class="btn btn-ghost">Back to class</a>
 </section>
 
 <div class="card prose">
-    <?php if ($assignment['description'] !== ''): ?>
-        <p><?= nl2br($assignment['description']) ?></p>
+    <?php if ($assignment->description !== ''): ?>
+        <p><?= nl2br($assignment->description) ?></p>
     <?php endif; ?>
-    <p class="muted">Due: <?= $assignment['due_at'] ?? 'No due date' ?></p>
+    <p class="muted">Due: <?= $assignment->dueAt ?? 'No due date' ?></p>
 
-    <?php if ($submission !== null && !empty($submission['graded_at'])): ?>
+    <?php if ($submission !== null && !empty($submission->gradedAt)): ?>
         <p><strong>Grade:</strong>
-            <?= $submission['grade_score'] !== null ? $submission['grade_score'] : '—' ?>
+            <?= $submission->gradeScore !== null ? $submission->gradeScore : '—' ?>
         </p>
-        <?php if (($submission['grade_feedback'] ?? '') !== ''): ?>
-            <p><strong>Feedback:</strong> <?= $submission['grade_feedback'] ?></p>
+        <?php if (($submission->gradeFeedback ?? '') !== ''): ?>
+            <p><strong>Feedback:</strong> <?= $submission->gradeFeedback ?></p>
         <?php endif; ?>
     <?php endif; ?>
 </div>
@@ -54,8 +46,8 @@ $submissionId = $submission !== null ? (int) $submission['id'] : null;
     <ul>
         <?php foreach ($files as $file): ?>
             <li>
-                <a href="/student/submissions/<?= (int) $submissionId ?>/files/<?= (int) $file['id'] ?>">
-                    <?= $file['original_name'] ?>
+                <a href="/student/submissions/<?= (int) $submissionId ?>/files/<?= (int) $file->id ?>">
+                    <?= $file->originalName ?>
                 </a>
             </li>
         <?php endforeach; ?>

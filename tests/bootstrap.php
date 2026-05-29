@@ -17,6 +17,8 @@ Autoloader::register('Tests\\', BASE_PATH . '/tests');
 
 spl_autoload_register([Autoloader::class, 'load']);
 
+require BASE_PATH . '/framework/Validation/Attributes/ValidationAttributes.php';
+
 /** @var array<string, mixed> $testConfig */
 $testConfig = require BASE_PATH . '/config/testing.php';
 Session::start($testConfig['session'] ?? []);

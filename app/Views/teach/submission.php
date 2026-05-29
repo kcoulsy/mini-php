@@ -3,22 +3,22 @@
 use Framework\View;
 
 /**
- * @var array<string, mixed> $submission
- * @var array<string, mixed>|null $assignment
- * @var array{id: int|string, email: string, name: string, role: string}|null $student
- * @var list<array{id: int|string, submission_id: int|string, stored_path: string, original_name: string, mime_type: string, size_bytes: int|string, created_at: string}> $files
+ * @var object $submission
+ * @var object|null $assignment
+ * @var object|null $student
+ * @var list<object> $files
  * @var bool $canGrade
  * @var array<string, list<string>> $errors
  */
-$submissionId = (int) $submission['id'];
+$submissionId = (int) $submission->id;
 ?>
 
 <section class="page-head">
     <h1>Submission</h1>
     <?php if ($assignment !== null && $student !== null): ?>
         <p class="muted">
-            <?= $assignment['title'] ?> —
-            <?= $student['name'] !== '' ? $student['name'] : $student['email'] ?>
+            <?= $assignment->title ?> —
+            <?= $student->name !== '' ? $student->name : $student->email ?>
         </p>
     <?php endif; ?>
 </section>
@@ -30,18 +30,18 @@ $submissionId = (int) $submission['id'];
     <ul>
         <?php foreach ($files as $file): ?>
             <li>
-                <a href="/teach/submissions/<?= $submissionId ?>/files/<?= (int) $file['id'] ?>">
-                    <?= $file['original_name'] ?>
+                <a href="/teach/submissions/<?= $submissionId ?>/files/<?= (int) $file->id ?>">
+                    <?= $file->originalName ?>
                 </a>
             </li>
         <?php endforeach; ?>
     </ul>
 <?php endif; ?>
 
-<?php if (!empty($submission['graded_at'])): ?>
-    <p><strong>Current grade:</strong> <?= $submission['grade_score'] ?? '—' ?></p>
-    <?php if (($submission['grade_feedback'] ?? '') !== ''): ?>
-        <p><strong>Feedback:</strong> <?= $submission['grade_feedback'] ?></p>
+<?php if (!empty($submission->gradedAt)): ?>
+    <p><strong>Current grade:</strong> <?= $submission->gradeScore ?? '—' ?></p>
+    <?php if (($submission->gradeFeedback ?? '') !== ''): ?>
+        <p><strong>Feedback:</strong> <?= $submission->gradeFeedback ?></p>
     <?php endif; ?>
 <?php endif; ?>
 
@@ -53,13 +53,13 @@ $submissionId = (int) $submission['id'];
 
         <label class="<?= View::hasFieldErrors($errors, 'grade_score') ? 'label-invalid' : '' ?>">
             Score (0–100, optional)
-            <input type="text" name="grade_score" value="<?= $submission['grade_score'] ?? '' ?>">
+            <input type="text" name="grade_score" value="<?= $submission->gradeScore ?? '' ?>">
             <?php View::fieldErrors($errors, 'grade_score'); ?>
         </label>
 
         <label class="<?= View::hasFieldErrors($errors, 'grade_feedback') ? 'label-invalid' : '' ?>">
             Feedback
-            <textarea name="grade_feedback" rows="4" maxlength="5000"><?= $submission['grade_feedback'] ?? '' ?></textarea>
+            <textarea name="grade_feedback" rows="4" maxlength="5000"><?= $submission->gradeFeedback ?? '' ?></textarea>
             <?php View::fieldErrors($errors, 'grade_feedback'); ?>
         </label>
 

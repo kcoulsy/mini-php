@@ -27,7 +27,7 @@ final class RouterTest extends TestCase
     public function testMatchesRouteWithParameter(): void
     {
         $router = new Router();
-        $router->get('/items/{id}', fn (Request $request, string $id) => Response::html("id={$id}"));
+        $router->get('/items/{id}', fn (Request $request, array $params) => Response::html('id=' . $params['id']));
 
         $response = $router->dispatch(Request::from('GET', '/items/42'));
 

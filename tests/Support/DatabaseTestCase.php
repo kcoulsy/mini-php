@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Models\User;
 use Framework\Testing\Concerns\InteractsWithDatabase;
 use Framework\Testing\TestCase;
 
@@ -32,5 +33,19 @@ abstract class DatabaseTestCase extends TestCase
     protected function basePath(): string
     {
         return BASE_PATH;
+    }
+
+    protected function createUser(
+        string $email = 'user@example.com',
+        string $password = 'password123',
+        string $name = '',
+        string $role = User::ROLE_STUDENT,
+    ): User {
+        return User::create([
+            'email' => mb_strtolower(trim($email)),
+            'password' => password_hash($password, PASSWORD_DEFAULT),
+            'name' => trim($name),
+            'role' => $role,
+        ]);
     }
 }

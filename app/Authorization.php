@@ -11,7 +11,7 @@ use App\Models\User;
 
 final class Authorization
 {
-    public static function canAccessClass(int $userId, int $classId, ?array $user = null): bool
+    public static function canAccessClass(int $userId, int $classId, ?User $user = null): bool
     {
         if (self::isAdmin($userId, $user)) {
             return true;
@@ -21,7 +21,7 @@ final class Authorization
             || ClassMembership::isTeacher($classId, $userId);
     }
 
-    public static function canManageClass(int $userId, int $classId, ?array $user = null): bool
+    public static function canManageClass(int $userId, int $classId, ?User $user = null): bool
     {
         if (self::isAdmin($userId, $user)) {
             return true;
@@ -30,7 +30,7 @@ final class Authorization
         return ClassMembership::isTeacher($classId, $userId);
     }
 
-    public static function canManageAssignment(int $userId, int $assignmentId, ?array $user = null): bool
+    public static function canManageAssignment(int $userId, int $assignmentId, ?User $user = null): bool
     {
         if (self::isAdmin($userId, $user)) {
             return true;
@@ -42,10 +42,10 @@ final class Authorization
             return false;
         }
 
-        return ClassMembership::isTeacher((int) $assignment['class_id'], $userId);
+        return ClassMembership::isTeacher($assignment->classId, $userId);
     }
 
-    public static function canViewSubmission(int $userId, int $submissionId, ?array $user = null): bool
+    public static function canViewSubmission(int $userId, int $submissionId, ?User $user = null): bool
     {
         if (self::isAdmin($userId, $user)) {
             return true;
@@ -57,23 +57,23 @@ final class Authorization
             return false;
         }
 
-        if ((int) $submission['student_id'] === $userId) {
+        if ($submission->studentId === $userId) {
             return true;
         }
 
-        $assignment = Assignment::find((int) $submission['assignment_id']);
+        $assignment = Assignment::find($submission->assignmentId);
 
         if ($assignment === null) {
             return false;
         }
 
-        return ClassMembership::isTeacher((int) $assignment['class_id'], $userId);
+        return ClassMembership::isTeacher($assignment->classId, $userId);
     }
 
     public static function canEditSubmission(
         int $userId,
         int $submissionId,
-        ?array $user = null,
+        ?User $user = null,
         bool $adminOverride = true,
     ): bool {
         if ($adminOverride && self::isAdmin($userId, $user)) {
@@ -82,21 +82,21 @@ final class Authorization
 
         $submission = Submission::find($submissionId);
 
-        if ($submission === null || (int) $submission['student_id'] !== $userId) {
+        if ($submission === null || $submission->studentId !== $userId) {
             return false;
         }
 
-        if (Submission::isGraded($submission)) {
+        if ($submission->isGraded()) {
             return false;
         }
 
-        $assignment = Assignment::find((int) $submission['assignment_id']);
+        $assignment = Assignment::find($submission->assignmentId);
 
         if ($assignment === null) {
             return false;
         }
 
-        if (Assignment::isPastDue($assignment['due_at'] !== null ? (string) $assignment['due_at'] : null)) {
+        if ($assignment->isPastDue()) {
             return false;
         }
 
@@ -106,7 +106,7 @@ final class Authorization
     public static function canEditSubmissionForAssignment(
         int $userId,
         int $assignmentId,
-        ?array $user = null,
+        ?User $user = null,
     ): bool {
         if (self::isAdmin($userId, $user)) {
             return true;
@@ -118,24 +118,27 @@ final class Authorization
             return false;
         }
 
-        if (!ClassMembership::isStudent((int) $assignment['class_id'], $userId)) {
+        if (!ClassMembership::isStudent($assignment->classId, $userId)) {
             return false;
         }
 
-        if (Assignment::isPastDue($assignment['due_at'] !== null ? (string) $assignment['due_at'] : null)) {
+        if ($assignment->isPastDue()) {
             return false;
         }
 
-        $submission = Submission::findForStudent($assignmentId, $userId);
+        $submission = Submission::query()
+            ->where('assignment_id', $assignmentId)
+            ->where('student_id', $userId)
+            ->first();
 
-        if ($submission !== null && Submission::isGraded($submission)) {
+        if ($submission instanceof Submission && $submission->isGraded()) {
             return false;
         }
 
         return true;
     }
 
-    public static function canGradeSubmission(int $userId, int $submissionId, ?array $user = null): bool
+    public static function canGradeSubmission(int $userId, int $submissionId, ?User $user = null): bool
     {
         if (self::isAdmin($userId, $user)) {
             return true;
@@ -147,23 +150,23 @@ final class Authorization
             return false;
         }
 
-        $assignment = Assignment::find((int) $submission['assignment_id']);
+        $assignment = Assignment::find($submission->assignmentId);
 
         if ($assignment === null) {
             return false;
         }
 
-        return ClassMembership::isTeacher((int) $assignment['class_id'], $userId);
+        return ClassMembership::isTeacher($assignment->classId, $userId);
     }
 
-    private static function isAdmin(int $userId, ?array $user): bool
+    private static function isAdmin(int $userId, ?User $user): bool
     {
         if ($user !== null) {
-            return ($user['role'] ?? '') === User::ROLE_ADMIN;
+            return $user->role === User::ROLE_ADMIN;
         }
 
         $row = User::find($userId);
 
-        return $row !== null && ($row['role'] ?? '') === User::ROLE_ADMIN;
+        return $row !== null && $row->role === User::ROLE_ADMIN;
     }
 }

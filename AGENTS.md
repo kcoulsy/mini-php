@@ -81,7 +81,7 @@ Add or update a test under `tests/Framework/` whenever you change a class in `fr
 4. **Security headers** applied to every response
 5. `Response::send()`
 
-When adding behavior, prefer extending existing patterns in `StudentController`, `TeacherController`, `Admin/*`, `AuthController`, and `routes/web.php` rather than new abstractions.
+When adding behavior, prefer extending existing patterns in `app/Http/*` handlers, `app/Data/*` DTOs, and `app/Models/*` rather than new abstractions.
 
 ---
 
@@ -201,106 +201,34 @@ To exercise migration logic in isolation, use `Migrator::fromPath($pdo, $path)` 
 
 ---
 
-## Model and row typing (PHPStan / IDE)
+## Models (attribute-driven)
 
-Models return **PDO rows as arrays** at runtime (`?array`, `list<array>`). Typing is **docblock-only** (no record/DTO classes). The goal is accurate static analysis in PHPStan and Intelephense without changing view syntax (`$item['title']` stays).
-
-### Where types live
-
-| Layer | Pattern |
-|--------|---------|
-| **Model** (source of truth) | `@phpstan-type ItemRow array{…}` on the model class; match columns from migrations |
-| **Model fetch methods** | `/** @return ItemRow\|null */` or `/** @return list<ItemRow> */` on `find*` / `all*` |
-| **Framework / controllers** | `@phpstan-import-type ItemRow from App\Models\Item` on the class, then `@return`, `@param` |
-| **Views** | Inline `array{…}` in `@var` (see below)—do **not** rely on `@phpstan-import-type` alone |
-| **View catalog** | [`app/Views/_types.php`](app/Views/_types.php) imports row types for cross-file reference; not loaded at runtime |
-
-Examples: [`app/Models/Item.php`](app/Models/Item.php), [`app/Models/User.php`](app/Models/User.php), [`framework/Auth.php`](framework/Auth.php), [`app/Views/items/index.php`](app/Views/items/index.php).
-
-### Defining a row type (new table)
-
-1. Add migration; note every column and type.
-2. On the model class, define `@phpstan-type XxxRow array{ … }` with **all** selected columns.
-3. Annotate every method that returns a full row from `SELECT *` or an explicit column list.
-
-Template (adjust fields to your table):
+Models extend `Framework\Model\Model` with PHP 8 attributes for table mapping, columns, and relationships.
 
 ```php
-/**
- * @phpstan-type WidgetRow array{
- *     id: int|string,
- *     name: string,
- *     user_id: int|string,
- *     created_at: string,
- *     updated_at: string
- * }
- */
-final class Widget
+#[Table('assignments')]
+final class Assignment extends Model
 {
-    /** @return WidgetRow|null */
-    public static function findForUser(int $id, int $userId): ?array
-    {
-        // ...
-    }
+    #[PrimaryKey]
+    #[AutoIncrement]
+    #[Column]
+    public int $id;
+
+    #[Column]
+    public string $title;
+
+    #[HasMany(Submission::class, foreignKey: 'assignment_id')]
+    public Collection $submissions;
 }
 ```
 
-### SQLite / PDO: use `int|string` for integers
+- **Query:** `Assignment::find($id)`, `Assignment::query()->where('class_id', $id)->latest()->get()`
+- **Create:** `Assignment::create(['title' => '…', 'class_id' => $id])`
+- **Relations:** explicit `$model->load('submissions')` — no lazy loading; accessing an unloaded relation throws
+- **Views:** use object properties (`$assignment->title`), not array offsets
+- **Junction logic:** `App\Models\ClassMembership` remains a static service (not a Model)
 
-`PDO::FETCH_ASSOC` often returns integer columns as **strings**. Row types use `int|string` for `id`, foreign keys, and numeric columns (e.g. `size_bytes`). Application code may still cast: `(int) $row['id']`.
-
-### Controllers and framework
-
-`@phpstan-import-type` works here: imported aliases expand to array shapes for `@param` / `@return`.
-
-```php
-/**
- * @phpstan-import-type ItemRow from App\Models\Item
- */
-final class ItemController extends Controller
-{
-    /** @param ItemRow $item */
-    private function editFormData(array $item, ...): array
-```
-
-### Views and Intelephense
-
-**Intelephense does not treat `@phpstan-import-type` aliases as arrays.** If a view has `@var list<ItemRow> $items` or `@var ItemRow $item`, offset access (`$item['id']`) triggers: *Expected type 'array\|string\|ArrayAccess'. Found 'ItemRow'.*
-
-**Fix:** use a standard `@var` with an **inline** array shape (copy fields from the model’s `@phpstan-type`). PHPStan accepts the same inline shape.
-
-```php
-/**
- * @var list<array{
- *     id: int|string,
- *     title: string,
- *     description: string,
- *     user_id: int|string,
- *     created_at: string,
- *     updated_at: string
- * }> $items
- */
-```
-
-Do **not** add `@phpstan-var list<ItemRow>` alongside `@var list<array{…}>` in views—some tools prefer the PHPStan tag and the IDE error returns.
-
-When you add a column in a migration, update **both** the model `@phpstan-type` and every view inline shape that lists columns.
-
-### Agent checklist (new model or column)
-
-1. Add or extend `@phpstan-type XxxRow` on the model (all columns).
-2. Add `@return` on row-returning methods.
-3. Import the type in controllers / `Auth` with `@phpstan-import-type` where parameters or returns use rows.
-4. In views that use `$row['field']`, use **inline** `array{…}` in `@var` (match the model).
-5. Run `php bin\test.php` (runtime unchanged).
-
-Optional later: add `phpstan/phpstan` and `phpstan.neon` to enforce types in CI.
-
-### Do not
-
-- Introduce readonly row classes unless the project explicitly moves to that pattern.
-- Use `@var list<ItemRow>` or `@var ItemRow` in views with only `@phpstan-import-type`—IDEs will not treat them as arrays.
-- Leave `array<string, mixed>` on fetch methods when a row shape is known.
+Add or extend `tests/Framework/Model/` when changing the model layer.
 
 ---
 
@@ -398,28 +326,41 @@ Or `<?= View::csrfField() ?>` when `use Framework\View` is in scope.
 - Mutations use **POST** only (no PUT/PATCH routes). Updates: `POST /items/{id}`; deletes: `POST /items/{id}/delete`.
 - `form-action` in CSP is `'self'`; keep `action` paths on the same app origin.
 
-### Validation
+### Validation (DTO attributes)
 
-Use `Framework\Validator::make($request->all(), $rules, $messages)` in controllers. Rules are pipe strings (`trim|required|max:120`) or arrays mixing rule tokens and custom callables `fn (mixed $value, string $field, array $data): ?string` (return an error message or `null`). Built-in rules: `trim`, `required`, `email`, `max:N`, `min:N`, `confirmed` (on `password` or `password_confirmation`).
+POST handlers declare a DTO parameter; the router builds and validates it from the request.
 
 ```php
-$v = Validator::make($request->all(), [
-    'title' => 'trim|required|max:120',
-], [
-    'title.required' => 'Title is required.',
-]);
+final class LoginData
+{
+    #[Trim]
+    #[Required]
+    #[Email]
+    public string $email;
 
-if ($v->fails()) {
-    return $this->render('items/create', [
-        'errors' => $v->errors(), // array<string, list<string>>
-        'old' => ['title' => (string) $v->get('title')],
-    ]);
+    #[Required]
+    public string $password;
+}
+
+#[Post('/login')]
+final class Login extends Controller
+{
+    public function __invoke(LoginData $data): Response { /* … */ }
+
+    public function onValidationFailed(Request $request, DtoResult $result): Response
+    {
+        return $this->render('auth/login', ['errors' => $result->errors, 'old' => $result->old]);
+    }
 }
 ```
 
-**File uploads:** keep using `UploadValidator::validateMany()`; merge failures into `$errors['attachments']`.
+Built-in rule attributes live in `framework/Validation/Attributes/ValidationAttributes.php` (`Required`, `Email`, `MinLength`, `Unique`, `Exists`, …). Custom rules implement `Framework\Validation\ValidationRule` (see `app/Validation/`).
 
-**Views:** pass `$errors` as `array<string, list<string>>`. Use `View::fieldErrors($errors, 'title')` under inputs, `View::hasFieldErrors($errors, 'title')` for `label-invalid`, and `require` `app/Views/_form_errors.php` for `_form`-level messages (e.g. invalid login). Add `tests/Framework/ValidatorTest.php` when changing validator behavior.
+**File uploads:** validate with `UploadValidator::validateMany()` in the handler; merge into `$errors['attachments']`.
+
+**Views:** pass `$errors` as `array<string, list<string>>`. Use `View::fieldErrors($errors, 'title')` and `app/Views/_form_errors.php`.
+
+Add `tests/Framework/DtoValidatorTest.php` when changing DTO validation.
 
 ### Validation errors
 
@@ -499,14 +440,54 @@ Script stack resets at the start of each `View::render()` call.
 
 ---
 
+## Flash messages
+
+One-time success/status messages after redirect use session flash storage in the framework.
+
+| Piece | Role |
+|--------|------|
+| `framework/Concerns/Flashes.php` | `setFlash()` / `flash()` trait |
+| `framework/Controller.php` | Uses `Flashes`; all controllers inherit the helpers |
+| `app/Views/layouts/main.php` | Renders `$flash` in a `.flash` banner when set |
+
+### Controller pattern
+
+After a successful mutation, set the message and redirect. On the **next** GET, pass the consumed message into the view:
+
+```php
+$this->setFlash('Assignment created.');
+
+return $this->redirect('/teach/classes/' . $classId);
+```
+
+```php
+return $this->render('teacher/assignments/index', [
+    'title' => 'Assignments',
+    'flash' => $this->flash(),
+]);
+```
+
+- Storage: `$_SESSION['flash']` (plain string).
+- `flash()` reads once and **unsets** the key; a second call in the same request returns `null`.
+- Messages are plain text; the layout escapes with `View::e($flash)`.
+
+Do not import or `use` the trait in app controllers—it is already on `Framework\Controller`. For a non-controller class, `use Framework\Concerns\Flashes` explicitly.
+
+Tests: `tests/Framework/ControllerTest.php` (`testFlashIsConsumedOnce`, `testSetFlashStoresMessageForNextRead`).
+
+---
+
 ## Conventions for agents
 
 ### Adding a POST route
 
-1. Register route in `routes/web.php` with correct middleware (`$authMiddleware` / `$guestMiddleware`).
-2. Implement controller action; validate input; use models with prepared statements.
-3. Add a view with `View::csrfField()` in the form.
-4. Add `tests/Feature/...` covering success, validation failure, and CSRF if non-obvious.
+1. Add a handler under `app/Http/` with `#[Post('…')]` (or a method on a `#[Prefix]` group class).
+2. Use a DTO in `app/Data/` for validated POST bodies; implement `onValidationFailed()` when re-rendering forms.
+3. Add `View::csrfField()` in the form view.
+4. On success: `setFlash()` + redirect; on the target GET pass `'flash' => $this->flash()`.
+5. Add `tests/Feature/...` for success, validation failure, and CSRF if non-obvious.
+
+Routes are registered automatically: `routes/web.php` calls `$app->registerRoutes()` which scans `app/Http/`. Use `#[Middleware([…])]` on handler classes. Route model binding: `{assignment}` → `Assignment $assignment`.
 
 ### Adding framework code
 
@@ -525,11 +506,11 @@ Follow [Database migrations](#database-migrations): new file under `database/mig
 - Extend layout via `$this->render('template', $data)` on `Controller`.
 - Use normal keys for user-visible strings; reserve `unsafe_` for layout slots and script HTML only.
 - Use `View::e()` when building attributes manually.
-- For variables passed as DB rows, add `@var` with an **inline** `array{…}` shape (see [Model and row typing](#model-and-row-typing-phpstan--ide)); copy fields from the model’s `@phpstan-type`.
+- For model variables in views, use `@var Assignment $assignment` (object properties).
 
 ### Typing a new model
 
-Follow [Model and row typing](#model-and-row-typing-phpstan--ide): `@phpstan-type` on the model, `@return` on fetch methods, `@phpstan-import-type` in controllers, inline `array{…}` in views.
+Add `#[Table]`, `#[Column]`, `#[PrimaryKey]` on public properties matching migration columns. Use camelCase properties mapped to snake_case columns. Add domain methods on the model class. Extend `tests/Framework/Model/` or `tests/App/Unit/`.
 
 ### Changing security behavior
 
@@ -553,12 +534,13 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Task | Location / command |
 |------|---------------------|
 | CSRF field in forms | `View::csrfField()` |
-| Form validation | `Validator::make()` in `framework/Validator.php` |
+| Form validation | DTO classes in `app/Data/` + `Framework\Validation\DtoValidator` |
 | Inline field errors | `View::fieldErrors($errors, 'field')` |
 | POST without token | 403 from `App::handle()` |
 | Escape string | `View::e()` or default `<?= $var ?>` |
 | Raw HTML block | `unsafe_*` view key or `Escaped` |
 | Page scripts | `View::script()` / `scriptStart`/`scriptEnd` |
+| Flash after redirect | `setFlash()` then `'flash' => $this->flash()` on next render |
 | Auth guard | `Authenticate` / `GuestOnly` / `RequireRole` / `RequireAdmin` |
 | Role home URLs | `Auth::homePath()` → `/student`, `/teach`, `/admin` |
 | Authorization checks | `app/Authorization.php` |
@@ -575,8 +557,7 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Store upload | `FileStorage::store()` |
 | Framework tests only | `php tests\run.php tests\Framework` |
 | App unit tests only | `php tests\run.php tests\App` |
-| Row type definitions | `@phpstan-type` on `app/Models/*.php` |
-| View row `@var` | Inline `array{…}` in templates (not import aliases) |
-| View type catalog | `app/Views/_types.php` |
+| HTTP handlers | `app/Http/` (attribute routes) |
+| Route registration | `$app->registerRoutes()` in `routes/web.php` |
 | Human-oriented overview | `README.md` |
 | Test layout | `tests/README.md` |

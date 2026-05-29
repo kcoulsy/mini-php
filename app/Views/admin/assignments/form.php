@@ -5,7 +5,7 @@ use Framework\View;
 /**
  * @var array<string, list<string>> $errors
  * @var array{class_id: string, title: string, description: string, due_at: string} $old
- * @var list<array{id: int|string, name: string, join_code: string, created_at: string, updated_at: string}> $classes
+ * @var list<object> $classes
  * @var string $formAction
  * @var string $cancelHref
  */
@@ -20,8 +20,8 @@ use Framework\View;
         <select name="class_id" required>
             <option value="">Select…</option>
             <?php foreach ($classes as $schoolClass): ?>
-                <option value="<?= (int) $schoolClass['id'] ?>" <?= $old['class_id'] === (string) $schoolClass['id'] ? 'selected' : '' ?>>
-                    <?= $schoolClass['name'] ?>
+                <option value="<?= (int) $schoolClass->id ?>" <?= $old['class_id'] === (string) $schoolClass->id ? 'selected' : '' ?>>
+                    <?= $schoolClass->name ?>
                 </option>
             <?php endforeach; ?>
         </select>

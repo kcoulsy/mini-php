@@ -3,7 +3,7 @@
 use Framework\View;
 
 /**
- * @var list<array{id: int|string, name: string, join_code: string, created_at: string, updated_at: string}> $classes
+ * @var list<object> $classes
  */
 ?>
 
@@ -23,11 +23,11 @@ use Framework\View;
     <tbody>
         <?php foreach ($classes as $schoolClass): ?>
             <tr>
-                <td><?= $schoolClass['name'] ?></td>
-                <td><code><?= $schoolClass['join_code'] ?></code></td>
+                <td><?= $schoolClass->name ?></td>
+                <td><code><?= $schoolClass->joinCode ?></code></td>
                 <td class="actions">
-                    <a href="/admin/classes/<?= (int) $schoolClass['id'] ?>/edit">Edit</a>
-                    <form method="post" action="/admin/classes/<?= (int) $schoolClass['id'] ?>/delete" class="inline-form">
+                    <a href="/admin/classes/<?= (int) $schoolClass->id ?>/edit">Edit</a>
+                    <form method="post" action="/admin/classes/<?= (int) $schoolClass->id ?>/delete" class="inline-form">
                         <?= View::csrfField() ?>
                         <button type="submit" class="link-danger">Delete</button>
                     </form>

@@ -65,8 +65,8 @@ final class DemoSeeder
             $teacher2Id,
         );
 
-        $submissionId = self::ensureSubmission($mathHw1, $aliceId);
-        Submission::grade($submissionId, 92.0, 'Strong work. Show your steps on #7.', $teacherId);
+        $submission = self::ensureSubmission($mathHw1, $aliceId);
+        $submission->grade(92.0, 'Strong work. Show your steps on #7.', $teacherId);
 
         self::ensureSubmission($englishEssay, $bobId);
 
@@ -95,28 +95,43 @@ final class DemoSeeder
 
     private static function ensureUser(string $email, string $role, string $name): int
     {
-        $existing = User::findByEmail($email);
+        $existing = User::findBy('email', mb_strtolower(trim($email)));
 
         if ($existing !== null) {
-            User::update((int) $existing['id'], $email, $name, $role, self::PASSWORD);
+            $existing->email = mb_strtolower(trim($email));
+            $existing->name = trim($name);
+            $existing->role = $role;
+            $existing->password = password_hash(self::PASSWORD, PASSWORD_DEFAULT);
+            $existing->save();
 
-            return (int) $existing['id'];
+            return $existing->id;
         }
 
-        return User::createWithRole($email, self::PASSWORD, $role, $name);
+        return User::create([
+            'email' => mb_strtolower(trim($email)),
+            'password' => password_hash(self::PASSWORD, PASSWORD_DEFAULT),
+            'name' => trim($name),
+            'role' => $role,
+        ])->id();
     }
 
     private static function ensureClass(string $name, string $joinCode): int
     {
-        $existing = SchoolClass::findByJoinCode($joinCode);
+        $existing = SchoolClass::findBy('join_code', strtoupper(trim($joinCode)));
 
-        if ($existing !== null) {
-            SchoolClass::update((int) $existing['id'], $name, $joinCode);
+        if ($existing instanceof SchoolClass) {
+            $existing->update([
+                'name' => trim($name),
+                'join_code' => strtoupper(trim($joinCode)),
+            ]);
 
-            return (int) $existing['id'];
+            return $existing->id;
         }
 
-        return SchoolClass::create($name, $joinCode);
+        return SchoolClass::create([
+            'name' => trim($name),
+            'join_code' => strtoupper(trim($joinCode)),
+        ])->id();
     }
 
     private static function ensureAssignment(
@@ -134,21 +149,37 @@ final class DemoSeeder
         $row = $stmt->fetch();
 
         if ($row !== false) {
-            $id = (int) $row['id'];
-            Assignment::update($id, $classId, $title, $description, $dueAt);
+            $assignment = Assignment::find((int) $row['id']);
+            if ($assignment !== null) {
+                $assignment->update([
+                    'class_id' => $classId,
+                    'title' => trim($title),
+                    'description' => trim($description),
+                    'due_at' => trim($dueAt),
+                ]);
+            }
 
-            return $id;
+            return (int) $row['id'];
         }
 
-        return Assignment::create($classId, $title, $description, $dueAt, $createdBy);
+        return Assignment::create([
+            'class_id' => $classId,
+            'title' => trim($title),
+            'description' => trim($description),
+            'due_at' => trim($dueAt),
+            'created_by' => $createdBy,
+        ])->id();
     }
 
-    private static function ensureSubmission(int $assignmentId, int $studentId): int
+    private static function ensureSubmission(int $assignmentId, int $studentId): Submission
     {
-        $existing = Submission::findForStudent($assignmentId, $studentId);
+        $existing = Submission::query()
+            ->where('assignment_id', $assignmentId)
+            ->where('student_id', $studentId)
+            ->first();
 
-        if ($existing !== null) {
-            return (int) $existing['id'];
+        if ($existing instanceof Submission) {
+            return $existing;
         }
 
         return Submission::upsertForStudent($assignmentId, $studentId);
@@ -188,11 +219,11 @@ final class DemoSeeder
         fwrite(STDOUT, "student  | carol@demo.local   | Carol (English only)\n\n");
 
         if ($math !== null) {
-            fwrite(STDOUT, "Math 101 join code: {$math['join_code']}\n");
+            fwrite(STDOUT, "Math 101 join code: {$math->joinCode}\n");
         }
 
         if ($english !== null) {
-            fwrite(STDOUT, "English 201 join code: {$english['join_code']}\n");
+            fwrite(STDOUT, "English 201 join code: {$english->joinCode}\n");
         }
 
         fwrite(STDOUT, "\nAlice has a graded submission on Math \"Problem set 1\".\n");

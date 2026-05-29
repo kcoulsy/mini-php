@@ -6,22 +6,14 @@ use Framework\View;
  * @var array<string, list<string>> $errors
  * @var int $assignmentId
  * @var int|null $submissionId
- * @var list<array{
- *     id: int|string,
- *     submission_id: int|string,
- *     stored_path: string,
- *     original_name: string,
- *     mime_type: string,
- *     size_bytes: int|string,
- *     created_at: string
- * }> $files
+ * @var list<object> $files
  */
 $submissionId = $submissionId ?? null;
 $files = $files ?? [];
 $existingFiles = [];
 
 foreach ($files as $file) {
-    $fid = (int) $file['id'];
+    $fid = (int) $file->id;
     $sid = (int) $submissionId;
     $existingFiles[] = [
         'source' => '/student/submissions/' . $sid . '/files/' . $fid,
@@ -29,9 +21,9 @@ foreach ($files as $file) {
             'type' => 'local',
             'metadata' => ['attachmentId' => $fid],
             'file' => [
-                'name' => (string) $file['original_name'],
-                'size' => (int) $file['size_bytes'],
-                'type' => (string) $file['mime_type'],
+                'name' => (string) $file->originalName,
+                'size' => (int) $file->sizeBytes,
+                'type' => (string) $file->mimeType,
             ],
         ],
     ];

@@ -57,6 +57,32 @@ final class App
     return HttpSecurity::apply($response, $security);
   }
 
+    public function registerRoutes(): void
+    {
+        /** @var array<string, mixed> $authConfig */
+        $authConfig = $this->config('auth', []);
+        /** @var array<string, mixed> $uploadConfig */
+        $uploadConfig = $this->config('uploads', []);
+
+        $container = new \Framework\Routing\HandlerContainer(
+            $this->view,
+            is_array($authConfig) ? $authConfig : [],
+            is_array($uploadConfig) ? $uploadConfig : [],
+        );
+
+        $handlersPath = $this->config('routing.handlers_path', $this->config['base_path'] . '/app/Http');
+
+        if (!is_string($handlersPath)) {
+            $handlersPath = $this->config['base_path'] . '/app/Http';
+        }
+
+        $registrar = new \Framework\Routing\RouteRegistrar(
+            $this->router,
+            new \Framework\Routing\ActionInvoker(),
+        );
+        $registrar->registerDirectory($handlersPath, $container);
+    }
+
   public function run(): void
   {
     $this->handle(Request::capture())->send();

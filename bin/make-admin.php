@@ -29,13 +29,20 @@ if ($email === null || $password === null) {
     exit(1);
 }
 
-$existing = User::findByEmail($email);
+$existing = User::findBy('email', mb_strtolower(trim($email)));
 
 if ($existing !== null) {
-    User::update((int) $existing['id'], $email, $name, User::ROLE_ADMIN, null);
+    $existing->name = trim($name);
+    $existing->role = User::ROLE_ADMIN;
+    $existing->save();
     fwrite(STDOUT, "Promoted existing user to admin: {$email}\n");
     exit(0);
 }
 
-$id = User::createWithRole($email, $password, User::ROLE_ADMIN, $name);
-fwrite(STDOUT, "Created admin user #{$id}: {$email}\n");
+$user = User::create([
+    'email' => mb_strtolower(trim($email)),
+    'password' => password_hash($password, PASSWORD_DEFAULT),
+    'name' => trim($name),
+    'role' => User::ROLE_ADMIN,
+]);
+fwrite(STDOUT, "Created admin user #{$user->id}: {$email}\n");

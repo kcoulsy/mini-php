@@ -222,16 +222,22 @@ final class TestRunner
     private function classFromFile(string $file): string
     {
         $normalized = str_replace('\\', '/', $file);
-        $marker = '/tests/';
+        $markers = ['/tests/', 'tests/'];
 
-        if (!str_contains($normalized, $marker)) {
-            return basename($file, '.php');
+        foreach ($markers as $marker) {
+            $pos = strrpos($normalized, $marker);
+
+            if ($pos === false) {
+                continue;
+            }
+
+            $relative = substr($normalized, $pos + strlen($marker));
+            $relative = str_replace('/', '\\', $relative);
+
+            return 'Tests\\' . substr($relative, 0, -4);
         }
 
-        $relative = substr($normalized, (int) strpos($normalized, $marker) + strlen($marker));
-        $relative = str_replace('/', '\\', $relative);
-
-        return 'Tests\\' . substr($relative, 0, -4);
+        return basename($file, '.php');
     }
 
     private function recordFailure(string $test, string $message): void

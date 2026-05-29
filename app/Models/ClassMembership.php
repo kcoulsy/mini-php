@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Framework\Database;
+use Framework\Model\Collection;
 
 final class ClassMembership
 {
@@ -26,6 +27,34 @@ final class ClassMembership
         $stmt->execute(['class_id' => $classId, 'user_id' => $userId]);
 
         return $stmt->fetch() !== false;
+    }
+
+    /** @return Collection<int, SchoolClass> */
+    public static function classesForStudent(int $studentId): Collection
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT c.* FROM classes c
+             INNER JOIN class_student cs ON cs.class_id = c.id
+             WHERE cs.user_id = :user_id
+             ORDER BY c.name ASC'
+        );
+        $stmt->execute(['user_id' => $studentId]);
+
+        return SchoolClass::collectionFromRows($stmt->fetchAll());
+    }
+
+    /** @return Collection<int, SchoolClass> */
+    public static function classesForTeacher(int $teacherId): Collection
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT c.* FROM classes c
+             INNER JOIN class_teacher ct ON ct.class_id = c.id
+             WHERE ct.user_id = :user_id
+             ORDER BY c.name ASC'
+        );
+        $stmt->execute(['user_id' => $teacherId]);
+
+        return SchoolClass::collectionFromRows($stmt->fetchAll());
     }
 
     public static function enrollStudent(int $classId, int $userId): bool

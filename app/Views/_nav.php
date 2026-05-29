@@ -4,12 +4,14 @@ use App\Models\User;
 use Framework\Auth;
 use Framework\View;
 
-/** @var array{role: string}|null $user */
-if (!Auth::check() || !is_array($user ?? Auth::user())) {
+/** @var User|null $user */
+$navUser = $user ?? Auth::user();
+
+if (!Auth::check() || !($navUser instanceof User)) {
     return;
 }
 
-$role = (string) (($user ?? Auth::user())['role'] ?? User::ROLE_STUDENT);
+$role = (string) ($navUser->role ?? User::ROLE_STUDENT);
 
 if ($role === User::ROLE_ADMIN): ?>
     <a href="/admin">Dashboard</a>

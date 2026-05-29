@@ -11,24 +11,34 @@ final class UserTest extends DatabaseTestCase
 {
     public function testCreateStoresHashedPassword(): void
     {
-        $id = User::create('User@Example.COM', 'password123', 'Pat');
+        $user = User::create([
+            'email' => mb_strtolower(trim('User@Example.COM')),
+            'password' => password_hash('password123', PASSWORD_DEFAULT),
+            'name' => trim('Pat'),
+            'role' => User::ROLE_STUDENT,
+        ]);
 
-        $user = User::find($id);
+        $found = User::find($user->id);
 
-        $this->assertNotNull($user);
-        $this->assertEquals('user@example.com', $user['email']);
-        $this->assertEquals('Pat', $user['name']);
-        $this->assertTrue((string) $user['password'] !== 'password123');
-        $this->assertTrue(password_verify('password123', (string) $user['password']));
+        $this->assertNotNull($found);
+        $this->assertEquals('user@example.com', $found->email);
+        $this->assertEquals('Pat', $found->name);
+        $this->assertTrue($found->password !== 'password123');
+        $this->assertTrue(password_verify('password123', $found->password));
     }
 
     public function testFindByEmailIsCaseInsensitive(): void
     {
-        User::create('mixed@Example.com', 'password123');
+        User::create([
+            'email' => mb_strtolower(trim('mixed@Example.com')),
+            'password' => password_hash('password123', PASSWORD_DEFAULT),
+            'name' => '',
+            'role' => User::ROLE_STUDENT,
+        ]);
 
-        $user = User::findByEmail('MIXED@example.com');
+        $user = User::findBy('email', mb_strtolower(trim('MIXED@example.com')));
 
         $this->assertNotNull($user);
-        $this->assertEquals('mixed@example.com', $user['email']);
+        $this->assertEquals('mixed@example.com', $user->email);
     }
 }

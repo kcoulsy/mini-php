@@ -16,7 +16,7 @@ use Framework\Testing\Concerns\InteractsWithHttp;
 use Framework\Testing\TestCase;
 
 /**
- * Full-stack tests: real router, controllers, views, in-memory SQLite.
+ * Full-stack tests: real router, handlers, views, in-memory SQLite.
  */
 abstract class ApplicationTestCase extends TestCase
 {
@@ -46,7 +46,12 @@ abstract class ApplicationTestCase extends TestCase
         string $name = 'Test User',
         string $role = User::ROLE_STUDENT,
     ): int {
-        return User::createWithRole($email, $password, $role, $name);
+        return User::create([
+            'email' => mb_strtolower(trim($email)),
+            'password' => password_hash($password, PASSWORD_DEFAULT),
+            'name' => trim($name),
+            'role' => $role,
+        ])->id();
     }
 
     protected function createStudent(
@@ -76,19 +81,26 @@ abstract class ApplicationTestCase extends TestCase
     /** @return array{id: int, join_code: string} */
     protected function createClassWithTeacher(int $teacherId, string $name = 'Math 101'): array
     {
-        $classId = SchoolClass::create($name);
-        ClassMembership::assignTeacher($classId, $teacherId);
-
-        $schoolClass = SchoolClass::find($classId);
+        $schoolClass = SchoolClass::create([
+            'name' => $name,
+            'join_code' => SchoolClass::generateJoinCode(),
+        ]);
+        ClassMembership::assignTeacher($schoolClass->id, $teacherId);
 
         return [
-            'id' => $classId,
-            'join_code' => (string) ($schoolClass['join_code'] ?? ''),
+            'id' => $schoolClass->id,
+            'join_code' => $schoolClass->joinCode,
         ];
     }
 
     protected function createAssignmentForClass(int $classId, int $createdBy, string $title = 'Homework 1'): int
     {
-        return Assignment::create($classId, $title, 'Do the work.', null, $createdBy);
+        return Assignment::create([
+            'class_id' => $classId,
+            'title' => trim($title),
+            'description' => 'Do the work.',
+            'due_at' => null,
+            'created_by' => $createdBy,
+        ])->id();
     }
 }

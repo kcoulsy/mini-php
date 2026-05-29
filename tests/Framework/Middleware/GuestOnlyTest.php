@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Framework\Middleware;
 
-use App\Models\User;
 use Framework\Auth;
 use Framework\Middleware\GuestOnly;
 use Framework\Request;
@@ -30,8 +29,8 @@ final class GuestOnlyTest extends DatabaseTestCase
 
     public function testRedirectsAuthenticatedUsers(): void
     {
-        $userId = User::createStudent('guest@example.com', 'password123');
-        Auth::login($userId);
+        $user = $this->createUser('guest@example.com', 'password123');
+        Auth::login($user->id);
 
         $middleware = new GuestOnly();
         $result = $middleware(Request::from('GET', '/login'));
