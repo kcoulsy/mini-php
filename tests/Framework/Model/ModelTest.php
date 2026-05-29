@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Framework\Model;
 
-use Framework\Database;
+use App\Models\SchoolClass;
 use Tests\Framework\Model\Fixtures\TestAssignment;
 use Tests\Framework\Model\Fixtures\TestSubmission;
 use Tests\Framework\Model\Fixtures\TestUser;
@@ -54,12 +54,10 @@ final class ModelTest extends DatabaseTestCase
         $classId = $this->seedClass();
         $assignmentId = $this->seedAssignment($classId, $teacherId);
 
-        Database::pdo()->prepare(
-            'INSERT INTO submissions (assignment_id, student_id, submitted_at)
-             VALUES (:aid, :sid, datetime(\'now\'))'
-        )->execute([
-            'aid' => $assignmentId,
-            'sid' => $this->seedStudent(),
+        TestSubmission::create([
+            'assignmentId' => $assignmentId,
+            'studentId' => $this->seedStudent(),
+            'submittedAt' => date('Y-m-d H:i:s'),
         ]);
 
         $assignment = TestAssignment::find($assignmentId);
@@ -115,11 +113,10 @@ final class ModelTest extends DatabaseTestCase
 
     private function seedClass(): int
     {
-        Database::pdo()->prepare(
-            'INSERT INTO classes (name, join_code) VALUES (:name, :code)'
-        )->execute(['name' => 'Math', 'code' => 'JOIN123']);
-
-        return (int) Database::pdo()->lastInsertId();
+        return SchoolClass::create([
+            'name' => 'Math',
+            'join_code' => 'JOIN123',
+        ])->id();
     }
 
     private function seedAssignment(int $classId, int $teacherId): int

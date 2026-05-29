@@ -4,57 +4,60 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Framework\Database;
 use Framework\Model\Collection;
 
 final class ClassMembership
 {
     public static function isStudent(int $classId, int $userId): bool
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT 1 FROM class_student WHERE class_id = :class_id AND user_id = :user_id LIMIT 1'
-        );
-        $stmt->execute(['class_id' => $classId, 'user_id' => $userId]);
-
-        return $stmt->fetch() !== false;
+        return ClassStudent::query()
+            ->where('class_id', $classId)
+            ->where('user_id', $userId)
+            ->exists();
     }
 
     public static function isTeacher(int $classId, int $userId): bool
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT 1 FROM class_teacher WHERE class_id = :class_id AND user_id = :user_id LIMIT 1'
-        );
-        $stmt->execute(['class_id' => $classId, 'user_id' => $userId]);
-
-        return $stmt->fetch() !== false;
+        return ClassTeacher::query()
+            ->where('class_id', $classId)
+            ->where('user_id', $userId)
+            ->exists();
     }
 
     /** @return Collection<int, SchoolClass> */
     public static function classesForStudent(int $studentId): Collection
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT c.* FROM classes c
-             INNER JOIN class_student cs ON cs.class_id = c.id
-             WHERE cs.user_id = :user_id
-             ORDER BY c.name ASC'
-        );
-        $stmt->execute(['user_id' => $studentId]);
+        $classIds = ClassStudent::query()
+            ->where('user_id', $studentId)
+            ->get()
+            ->pluck('classId');
 
-        return SchoolClass::collectionFromRows($stmt->fetchAll());
+        if ($classIds === []) {
+            return new Collection([]);
+        }
+
+        return SchoolClass::query()
+            ->whereIn('id', $classIds)
+            ->orderBy('name')
+            ->get();
     }
 
     /** @return Collection<int, SchoolClass> */
     public static function classesForTeacher(int $teacherId): Collection
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT c.* FROM classes c
-             INNER JOIN class_teacher ct ON ct.class_id = c.id
-             WHERE ct.user_id = :user_id
-             ORDER BY c.name ASC'
-        );
-        $stmt->execute(['user_id' => $teacherId]);
+        $classIds = ClassTeacher::query()
+            ->where('user_id', $teacherId)
+            ->get()
+            ->pluck('classId');
 
-        return SchoolClass::collectionFromRows($stmt->fetchAll());
+        if ($classIds === []) {
+            return new Collection([]);
+        }
+
+        return SchoolClass::query()
+            ->whereIn('id', $classIds)
+            ->orderBy('name')
+            ->get();
     }
 
     public static function enrollStudent(int $classId, int $userId): bool
@@ -63,22 +66,20 @@ final class ClassMembership
             return true;
         }
 
-        $stmt = Database::pdo()->prepare(
-            'INSERT INTO class_student (class_id, user_id) VALUES (:class_id, :user_id)'
-        );
-        $stmt->execute(['class_id' => $classId, 'user_id' => $userId]);
+        ClassStudent::query()->insert([
+            'class_id' => $classId,
+            'user_id' => $userId,
+        ]);
 
         return true;
     }
 
     public static function unenrollStudent(int $classId, int $userId): bool
     {
-        $stmt = Database::pdo()->prepare(
-            'DELETE FROM class_student WHERE class_id = :class_id AND user_id = :user_id'
-        );
-        $stmt->execute(['class_id' => $classId, 'user_id' => $userId]);
-
-        return $stmt->rowCount() > 0;
+        return ClassStudent::query()
+            ->where('class_id', $classId)
+            ->where('user_id', $userId)
+            ->delete() > 0;
     }
 
     public static function assignTeacher(int $classId, int $userId): void
@@ -87,69 +88,81 @@ final class ClassMembership
             return;
         }
 
-        $stmt = Database::pdo()->prepare(
-            'INSERT INTO class_teacher (class_id, user_id) VALUES (:class_id, :user_id)'
-        );
-        $stmt->execute(['class_id' => $classId, 'user_id' => $userId]);
+        ClassTeacher::query()->insert([
+            'class_id' => $classId,
+            'user_id' => $userId,
+        ]);
     }
 
     public static function unassignTeacher(int $classId, int $userId): bool
     {
-        $stmt = Database::pdo()->prepare(
-            'DELETE FROM class_teacher WHERE class_id = :class_id AND user_id = :user_id'
-        );
-        $stmt->execute(['class_id' => $classId, 'user_id' => $userId]);
-
-        return $stmt->rowCount() > 0;
+        return ClassTeacher::query()
+            ->where('class_id', $classId)
+            ->where('user_id', $userId)
+            ->delete() > 0;
     }
 
     /** @param list<int> $teacherIds */
     public static function syncTeachers(int $classId, array $teacherIds): void
     {
-        $stmt = Database::pdo()->prepare('DELETE FROM class_teacher WHERE class_id = :class_id');
-        $stmt->execute(['class_id' => $classId]);
+        ClassTeacher::query()
+            ->where('class_id', $classId)
+            ->delete();
 
         foreach ($teacherIds as $teacherId) {
             self::assignTeacher($classId, $teacherId);
         }
     }
 
-    /** @return list<array{id: int|string, email: string, name: string, role: string}> */
+    /** @return list<User> */
     public static function studentsForClass(int $classId): array
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT u.id, u.email, u.name, u.role FROM users u
-             INNER JOIN class_student cs ON cs.user_id = u.id
-             WHERE cs.class_id = :class_id
-             ORDER BY u.name ASC, u.email ASC'
-        );
-        $stmt->execute(['class_id' => $classId]);
+        $userIds = ClassStudent::query()
+            ->where('class_id', $classId)
+            ->get()
+            ->pluck('userId');
 
-        return $stmt->fetchAll();
+        if ($userIds === []) {
+            return [];
+        }
+
+        return User::query()
+            ->whereIn('id', $userIds)
+            ->orderBy('name')
+            ->orderBy('email')
+            ->get()
+            ->all();
     }
 
-    /** @return list<array{id: int|string, email: string, name: string, role: string}> */
+    /** @return list<User> */
     public static function teachersForClass(int $classId): array
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT u.id, u.email, u.name, u.role FROM users u
-             INNER JOIN class_teacher ct ON ct.user_id = u.id
-             WHERE ct.class_id = :class_id
-             ORDER BY u.name ASC, u.email ASC'
-        );
-        $stmt->execute(['class_id' => $classId]);
+        $userIds = ClassTeacher::query()
+            ->where('class_id', $classId)
+            ->get()
+            ->pluck('userId');
 
-        return $stmt->fetchAll();
+        if ($userIds === []) {
+            return [];
+        }
+
+        return User::query()
+            ->whereIn('id', $userIds)
+            ->orderBy('name')
+            ->orderBy('email')
+            ->get()
+            ->all();
     }
 
     /** @return list<int> */
     public static function teacherIdsForClass(int $classId): array
     {
-        $stmt = Database::pdo()->prepare(
-            'SELECT user_id FROM class_teacher WHERE class_id = :class_id'
+        return array_map(
+            static fn (mixed $id): int => (int) $id,
+            ClassTeacher::query()
+                ->where('class_id', $classId)
+                ->get()
+                ->pluck('userId'),
         );
-        $stmt->execute(['class_id' => $classId]);
-
-        return array_map(static fn (array $row): int => (int) $row['user_id'], $stmt->fetchAll());
     }
 }

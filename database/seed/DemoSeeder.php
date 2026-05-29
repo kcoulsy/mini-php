@@ -6,10 +6,12 @@ namespace Database\Seed;
 
 use App\Models\Assignment;
 use App\Models\ClassMembership;
+use App\Models\ClassStudent;
+use App\Models\ClassTeacher;
 use App\Models\SchoolClass;
 use App\Models\Submission;
+use App\Models\SubmissionFile;
 use App\Models\User;
-use Framework\Database;
 
 /**
  * Idempotent demo data for local development.
@@ -76,19 +78,15 @@ final class DemoSeeder
 
     public static function wipe(): void
     {
-        $pdo = Database::pdo();
         $emails = self::demoEmails();
-        $placeholders = implode(',', array_fill(0, count($emails), '?'));
 
-        $pdo->exec('DELETE FROM submission_files');
-        $pdo->exec('DELETE FROM submissions');
-        $pdo->exec('DELETE FROM assignments');
-        $pdo->exec('DELETE FROM class_student');
-        $pdo->exec('DELETE FROM class_teacher');
-        $pdo->exec('DELETE FROM classes WHERE join_code IN (\'MATH101\', \'ENG201\')');
-
-        $stmt = $pdo->prepare("DELETE FROM users WHERE email IN ({$placeholders})");
-        $stmt->execute($emails);
+        SubmissionFile::query()->delete();
+        Submission::query()->delete();
+        Assignment::query()->delete();
+        ClassStudent::query()->delete();
+        ClassTeacher::query()->delete();
+        SchoolClass::query()->whereIn('join_code', ['MATH101', 'ENG201'])->delete();
+        User::query()->whereIn('email', $emails)->delete();
 
         fwrite(STDOUT, "Removed previous demo users, classes, and related data.\n");
     }
@@ -141,25 +139,20 @@ final class DemoSeeder
         string $dueAt,
         int $createdBy,
     ): int {
-        $pdo = Database::pdo();
-        $stmt = $pdo->prepare(
-            'SELECT id FROM assignments WHERE class_id = :class_id AND title = :title LIMIT 1'
-        );
-        $stmt->execute(['class_id' => $classId, 'title' => $title]);
-        $row = $stmt->fetch();
+        $existing = Assignment::query()
+            ->where('class_id', $classId)
+            ->where('title', $title)
+            ->first();
 
-        if ($row !== false) {
-            $assignment = Assignment::find((int) $row['id']);
-            if ($assignment !== null) {
-                $assignment->update([
-                    'class_id' => $classId,
-                    'title' => trim($title),
-                    'description' => trim($description),
-                    'due_at' => trim($dueAt),
-                ]);
-            }
+        if ($existing instanceof Assignment) {
+            $existing->update([
+                'class_id' => $classId,
+                'title' => trim($title),
+                'description' => trim($description),
+                'due_at' => trim($dueAt),
+            ]);
 
-            return (int) $row['id'];
+            return $existing->id;
         }
 
         return Assignment::create([

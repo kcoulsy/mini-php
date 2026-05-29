@@ -52,6 +52,20 @@ final class Collection implements Countable, IteratorAggregate
     }
 
     /**
+     * @return list<mixed>
+     */
+    public function pluck(string $property): array
+    {
+        $values = [];
+
+        foreach ($this->items as $item) {
+            $values[] = $item->{$property};
+        }
+
+        return $values;
+    }
+
+    /**
      * @param list<Model> $parents
      */
     public static function make(array $parents): self

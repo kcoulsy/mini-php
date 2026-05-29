@@ -266,18 +266,13 @@ final class Unique implements ValidationRule
         $meta = \Framework\Model\ModelMetadata::for($this->model);
         $column = $this->column ?? $meta->columnForProperty($property) ?? \Framework\Model\ModelMetadata::snakeCase($property);
 
-        $sql = 'SELECT COUNT(*) FROM ' . $meta->table . ' WHERE ' . $column . ' = :value';
-        $params = ['value' => $value];
+        $query = $this->model::query()->where($column, $value);
 
         if ($this->except !== null) {
-            $sql .= ' AND ' . $meta->primaryKey . ' != :except';
-            $params['except'] = $this->except;
+            $query->where($meta->primaryKey, '!=', $this->except);
         }
 
-        $stmt = \Framework\Database::pdo()->prepare($sql);
-        $stmt->execute($params);
-
-        if ((int) $stmt->fetchColumn() > 0) {
+        if ($query->count() > 0) {
             return 'This value is already taken.';
         }
 
@@ -306,12 +301,7 @@ final class Exists implements ValidationRule
         $meta = \Framework\Model\ModelMetadata::for($this->model);
         $column = $this->column ?? $meta->primaryKey;
 
-        $stmt = \Framework\Database::pdo()->prepare(
-            'SELECT COUNT(*) FROM ' . $meta->table . ' WHERE ' . $column . ' = :value'
-        );
-        $stmt->execute(['value' => $value]);
-
-        if ((int) $stmt->fetchColumn() === 0) {
+        if ($this->model::query()->where($column, $value)->count() === 0) {
             return 'The selected value is invalid.';
         }
 

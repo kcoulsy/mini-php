@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Framework\Database;
 use Framework\Model\Attributes\AutoIncrement;
 use Framework\Model\Attributes\Column;
 use Framework\Model\Attributes\HasMany;
@@ -39,19 +38,13 @@ final class SchoolClass extends Model
     public static function joinCodeExists(string $joinCode, ?int $exceptId = null): bool
     {
         $code = strtoupper(trim($joinCode));
-        $sql = 'SELECT 1 FROM classes WHERE join_code = :join_code';
-        $params = ['join_code' => $code];
+        $query = self::query()->where('join_code', $code);
 
         if ($exceptId !== null) {
-            $sql .= ' AND id != :id';
-            $params['id'] = $exceptId;
+            $query->where('id', '!=', $exceptId);
         }
 
-        $sql .= ' LIMIT 1';
-        $stmt = Database::pdo()->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetch() !== false;
+        return $query->exists();
     }
 
     public static function generateJoinCode(): string

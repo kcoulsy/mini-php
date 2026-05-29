@@ -12,7 +12,6 @@ use App\Models\SubmissionFile;
 use App\Models\User;
 use Framework\Auth;
 use Framework\Controller;
-use Framework\Database;
 use Framework\FileStorage;
 use Framework\Middleware\Authenticate;
 use App\Middleware\RequireAdmin;
@@ -80,10 +79,7 @@ final class Submissions extends Controller
             }
         }
 
-        $stmt = Database::pdo()->prepare(
-            'DELETE FROM submission_files WHERE submission_id = :submission_id'
-        );
-        $stmt->execute(['submission_id' => $submission->id]);
+        SubmissionFile::query()->where('submission_id', $submission->id)->delete();
 
         $submission->delete();
         $this->setFlash('Submission deleted.');
