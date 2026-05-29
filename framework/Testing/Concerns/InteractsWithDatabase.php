@@ -15,6 +15,20 @@ trait InteractsWithDatabase
         require $this->basePath() . '/database/migrate.php';
     }
 
+    protected function beginDatabaseTransaction(): void
+    {
+        Database::pdo()->exec('BEGIN');
+    }
+
+    protected function rollbackDatabaseTransaction(): void
+    {
+        try {
+            Database::pdo()->exec('ROLLBACK');
+        } catch (\Throwable) {
+            // Ignore when no transaction is open.
+        }
+    }
+
     /** @return array{driver: string, path: string} */
     abstract protected function databaseConfig(): array;
 

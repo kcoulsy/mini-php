@@ -7,11 +7,36 @@ use Framework\Testing\TestRunner;
 require __DIR__ . '/bootstrap.php';
 
 $verbose = true;
+$parallel = 0;
 $paths = [];
+$rawArgs = array_slice($argv, 1);
 
-foreach (array_slice($argv, 1) as $arg) {
+for ($i = 0; $i < count($rawArgs); $i++) {
+    $arg = $rawArgs[$i];
+
     if ($arg === '--quiet' || $arg === '-q') {
         $verbose = false;
+        continue;
+    }
+
+    if ($arg === '--parallel' || $arg === '-j') {
+        if (isset($rawArgs[$i + 1]) && is_numeric($rawArgs[$i + 1])) {
+            $parallel = max(1, (int) $rawArgs[$i + 1]);
+            $i++;
+            continue;
+        }
+
+        $parallel = min(4, (int) ($_SERVER['NUMBER_OF_PROCESSORS'] ?? 4));
+        continue;
+    }
+
+    if (preg_match('/^(--parallel|-j)=(\d+)$/', $arg, $matches) === 1) {
+        $parallel = max(1, (int) $matches[2]);
+        continue;
+    }
+
+    if (preg_match('/^-j(\d+)$/', $arg, $matches) === 1) {
+        $parallel = max(1, (int) $matches[1]);
         continue;
     }
 
@@ -26,6 +51,12 @@ if ($paths === []) {
     ];
 }
 
-$exit = (new TestRunner())->run($paths, verbose: $verbose);
+$runner = new TestRunner();
+
+if ($parallel > 1) {
+    $exit = $runner->runParallel($paths, $parallel, verbose: $verbose);
+} else {
+    $exit = $runner->run($paths, verbose: $verbose);
+}
 
 exit($exit);

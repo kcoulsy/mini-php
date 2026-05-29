@@ -9,9 +9,11 @@ use App\Models\ClassMembership;
 use App\Models\SchoolClass;
 use App\Models\User;
 use Framework\App;
+use Framework\Database;
 use Framework\Request;
 use Framework\Response;
 use Framework\Session;
+use Framework\Testing\Concerns\InteractsWithDatabase;
 use Framework\Testing\Concerns\InteractsWithHttp;
 use Framework\Testing\TestCase;
 
@@ -20,14 +22,53 @@ use Framework\Testing\TestCase;
  */
 abstract class ApplicationTestCase extends TestCase
 {
+    use InteractsWithDatabase;
     use InteractsWithHttp;
 
     protected App $app;
 
+    private static ?App $sharedApp = null;
+
+    public static function setUpBeforeClass(): void
+    {
+        self::$sharedApp = createTestApplication();
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        $_SESSION = [];
+        self::$sharedApp = null;
+    }
+
     protected function setUp(): void
     {
-        $this->app = createTestApplication();
+        if (self::$sharedApp === null) {
+            self::$sharedApp = createTestApplication();
+        }
+
+        $this->app = self::$sharedApp;
         $_SESSION = [];
+        $this->beginDatabaseTransaction();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->rollbackDatabaseTransaction();
+    }
+
+    /** @return array{driver: string, path: string} */
+    protected function databaseConfig(): array
+    {
+        /** @var array<string, mixed> $config */
+        $config = require BASE_PATH . '/config/testing.php';
+
+        /** @var array{driver: string, path: string} */
+        return $config['database'];
+    }
+
+    protected function basePath(): string
+    {
+        return BASE_PATH;
     }
 
     protected function dispatch(Request $request): Response

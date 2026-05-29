@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Models\User;
+use Framework\Database;
 use Framework\Testing\Concerns\InteractsWithDatabase;
 use Framework\Testing\TestCase;
 
@@ -15,9 +16,26 @@ abstract class DatabaseTestCase extends TestCase
 {
     use InteractsWithDatabase;
 
+    public static function setUpBeforeClass(): void
+    {
+        $instance = new static();
+        Database::disconnect();
+        Database::connect($instance->databaseConfig());
+        require $instance->basePath() . '/database/migrate.php';
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+    }
+
     protected function setUp(): void
     {
-        $this->refreshDatabase();
+        $this->beginDatabaseTransaction();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->rollbackDatabaseTransaction();
     }
 
     /** @return array{driver: string, path: string} */

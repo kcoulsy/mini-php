@@ -13,6 +13,7 @@ tests/
   Support/        Base cases and shared helpers (not executed as tests)
   bootstrap.php   Autoloading + createTestApplication()
   run.php         Test runner entry point
+  worker.php      Parallel worker entry (used by --parallel)
 ```
 
 **Framework** — isolate classes under `framework/`; build dependencies manually or use `DatabaseTestCase` when SQLite is needed (e.g. `Auth`, `Migrator`).
@@ -27,14 +28,22 @@ When you add or change a class in `framework/`, add or update a matching test un
 
 ```cmd
 php bin\test.php
+php bin\test.php --parallel 4
 php tests\run.php
 php tests\run.php tests\Framework
 php tests\run.php tests\App
 php tests\run.php tests\Feature\ItemsTest.php
 php tests\run.php --quiet
+php tests\run.php -j4 --quiet
 ```
 
-By default each passing test is logged as it runs (`PASS Class::testName (N assertions)`), grouped by file. Use `--quiet` or `-q` for the compact dot progress style.
+By default each passing test is logged as it runs (`PASS Class::testName (N assertions, 12.3 ms)`), grouped by file with a per-file subtotal. A summary line reports pass/fail counts and total `Time:`. Use `--quiet` or `-q` for the compact dot progress style (total time is still printed).
+
+Use `--parallel N` or `-j N` to run test files in parallel worker processes. `--parallel` without a number uses `min(4, CPU count)`. Serial mode remains the default.
+
+## Database test isolation
+
+`DatabaseTestCase` and `ApplicationTestCase` migrate once per test class (`setUpBeforeClass`) and wrap each test method in a SQLite transaction (`BEGIN` / `ROLLBACK`). This avoids reconnecting and re-running migrations on every method. Custom DB tests can use `InteractsWithDatabase::refreshDatabase()` when a full reset is needed.
 
 ## Writing a test
 
@@ -47,10 +56,10 @@ By default each passing test is logged as it runs (`PASS Class::testName (N asse
 
 | Piece | Purpose |
 |--------|---------|
-| `TestCase` | `assertEquals`, `assertTrue`, `setUp` / `tearDown` |
+| `TestCase` | `assertEquals`, `assertTrue`, `setUp` / `tearDown`, `setUpBeforeClass` / `tearDownAfterClass` |
 | `Assert` | Static assertions (used by `TestCase`) |
 | `InteractsWithHttp` | `get()`, `post()`, `assertOk`, `assertRedirect`, `assertSee` |
-| `InteractsWithDatabase` | `refreshDatabase()` for custom DB setup |
+| `InteractsWithDatabase` | `refreshDatabase()`, transaction helpers for custom DB setup |
 | `Request::from()` | Synthetic requests without `$_SERVER` |
 | `App::handle()` | Dispatch a request, get `Response` without sending headers |
 
@@ -60,4 +69,4 @@ By default each passing test is logged as it runs (`PASS Class::testName (N asse
 - Add app model tests under `tests/App/Unit/`.
 - Add one feature test per route or user flow under `tests/Feature/`.
 - Extract shared setup to `tests/Support/` (factories, traits).
-- Split slow groups by passing a directory to `run.php` in CI.
+- Split slow groups by passing a directory to `run.php` in CI, or use `--parallel` locally.

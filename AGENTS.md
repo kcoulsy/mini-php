@@ -53,13 +53,17 @@ Prints each applied filename, or `Nothing to migrate.` when the database is curr
 
 ```cmd
 php bin\test.php
+php bin\test.php --parallel 4
+php bin\test.php --parallel --quiet
 php tests\run.php tests\Framework
 php tests\run.php tests\App
 php tests\run.php tests\Feature
 php tests\run.php --quiet
 ```
 
-The runner logs each test as it passes (`PASS Class::testMethod (N assertions)`). Use `--quiet` for dot-only output.
+The runner logs each test with assertion count and duration (`PASS Class::testName (N assertions, 12.3 ms)`), a per-file subtotal, and overall `Time:` at the end. Use `--quiet` or `-q` for compact dot output (total time is still printed).
+
+Use `--parallel N` or `-j N` to run test **files** in parallel worker processes (Windows-safe). `--parallel` without a number defaults to `min(4, CPU count)`. Serial mode is the default for CI scripts that expect stable ordering.
 
 Tests use in-memory SQLite (`config/testing.php`).
 
@@ -550,6 +554,7 @@ Run `php bin\test.php` after changes; include updates to `tests/Feature/CsrfTest
 | Migrator / runner | `framework/Migrations/Migrator.php`, `database/migrate.php` |
 | Auto-migrate in tests | `tests/bootstrap.php` → `database/migrate.php` |
 | Run tests | `php bin\test.php` |
+| Parallel tests | `php bin\test.php --parallel 4` |
 | Upload config | `config/app.php` → `uploads` |
 | Request files | `Request::files('attachments')` |
 | Store upload | `FileStorage::store()` |

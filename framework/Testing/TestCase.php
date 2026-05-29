@@ -8,6 +8,14 @@ abstract class TestCase
 {
     use MakesAssertions;
 
+    public static function setUpBeforeClass(): void
+    {
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+    }
+
     protected function setUp(): void
     {
     }
