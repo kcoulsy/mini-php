@@ -10,6 +10,7 @@ use Framework\Controller;
 use Framework\Middleware\GuestOnly;
 use Framework\Request;
 use Framework\Response;
+use Framework\Routing\Attributes\Get;
 use Framework\Routing\Attributes\Middleware;
 use Framework\Routing\Attributes\Post;
 use Framework\Session;
@@ -18,8 +19,14 @@ use Framework\Validation\DtoResult;
 #[Middleware([GuestOnly::class])]
 final class Login extends Controller
 {
+    #[Get('/login')]
+    public function show(Request $request): Response
+    {
+        return $this->render('auth/login', $this->formData());
+    }
+
     #[Post('/login')]
-    public function __invoke(Request $request, LoginData $data): Response
+    public function login(Request $request, LoginData $data): Response
     {
         if (!Auth::attempt($data->email, $data->password)) {
             return $this->render('auth/login', $this->formData(

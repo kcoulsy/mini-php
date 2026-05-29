@@ -11,6 +11,7 @@ use Framework\Controller;
 use Framework\Middleware\GuestOnly;
 use Framework\Request;
 use Framework\Response;
+use Framework\Routing\Attributes\Get;
 use Framework\Routing\Attributes\Middleware;
 use Framework\Routing\Attributes\Post;
 use Framework\Validation\DtoResult;
@@ -26,8 +27,14 @@ final class Register extends Controller
         parent::__construct($view);
     }
 
+    #[Get('/register')]
+    public function show(Request $request): Response
+    {
+        return $this->render('auth/register', $this->formData());
+    }
+
     #[Post('/register')]
-    public function __invoke(Request $request, RegisterData $data): Response
+    public function register(Request $request, RegisterData $data): Response
     {
         $minLength = (int) ($this->authConfig['password_min_length'] ?? 8);
 

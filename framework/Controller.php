@@ -12,6 +12,17 @@ abstract class Controller
 
   public function __construct(protected readonly View $view) {}
 
+  protected function userId(): int
+  {
+    $id = Auth::id();
+
+    if ($id === null) {
+      throw new \RuntimeException('Authenticated user required.');
+    }
+
+    return $id;
+  }
+
   /**
    * @param array<string, mixed> $data
    */

@@ -21,7 +21,7 @@ use Framework\Validation\DtoResult;
 
 #[Prefix('/admin')]
 #[Middleware([Authenticate::class, RequireAdmin::class])]
-final class ClassRoutes extends Controller
+final class Classes extends Controller
 {
     #[Get('/classes')]
     public function index(Request $request): Response

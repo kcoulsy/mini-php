@@ -39,17 +39,13 @@ final class HandlerContainer
     private function needsAuthConfig(string $class): bool
     {
         return str_contains($class, '\\Auth\\')
-            || str_contains($class, 'Admin\\UserRoutes')
-            || str_contains($class, 'Admin\\Users\\')
-            || str_contains($class, 'AdminUserRoutes');
+            || str_contains($class, 'Admin\\Users');
     }
 
     private function needsUploadConfig(string $class): bool
     {
         return str_contains($class, 'Student')
             || str_contains($class, 'Teach')
-            || str_contains($class, 'Admin\\SubmissionRoutes')
-            || str_contains($class, 'Admin\\Submissions')
-            || str_contains($class, 'AdminSubmissionRoutes');
+            || str_contains($class, 'Admin\\Submissions');
     }
 }

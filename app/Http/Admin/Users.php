@@ -21,7 +21,7 @@ use Framework\Validation\DtoResult;
 
 #[Prefix('/admin')]
 #[Middleware([Authenticate::class, RequireAdmin::class])]
-final class UserRoutes extends Controller
+final class Users extends Controller
 {
     /** @param array<string, mixed> $authConfig */
     public function __construct(

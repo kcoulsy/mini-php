@@ -22,7 +22,7 @@ use Framework\Validation\DtoResult;
 
 #[Prefix('/admin')]
 #[Middleware([Authenticate::class, RequireAdmin::class])]
-final class AssignmentRoutes extends Controller
+final class Assignments extends Controller
 {
     #[Get('/assignments')]
     public function index(Request $request): Response

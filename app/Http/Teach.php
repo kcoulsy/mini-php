@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Teach;
+namespace App\Http;
 
 use App\Authorization;
 use App\Data\AssignmentFormData;
 use App\Data\GradeSubmissionData;
-use App\Http\Concerns\HandlesUploads;
-use App\Http\Middleware\RequireTeacher;
+use App\Middleware\RequireTeacher;
 use App\Models\Assignment;
 use App\Models\ClassMembership;
 use App\Models\SchoolClass;
 use App\Models\Submission;
+use App\Models\SubmissionFile;
 use App\Models\User;
 use Framework\Auth;
+use Framework\FileStorage;
 use Framework\Controller;
 use Framework\Middleware\Authenticate;
 use Framework\Request;
@@ -27,9 +28,9 @@ use Framework\Validation\DtoResult;
 
 #[Prefix('/teach')]
 #[Middleware([Authenticate::class, RequireTeacher::class])]
-final class TeachRoutes extends Controller
+final class Teach extends Controller
 {
-    use HandlesUploads;
+    private FileStorage $storage;
 
     /** @param array<string, mixed> $uploadConfig */
     public function __construct(
@@ -37,7 +38,7 @@ final class TeachRoutes extends Controller
         array $uploadConfig = [],
     ) {
         parent::__construct($view);
-        $this->bootUploads($uploadConfig);
+        $this->storage = FileStorage::fromConfig($uploadConfig);
     }
 
     #[Get('')]
@@ -172,12 +173,14 @@ final class TeachRoutes extends Controller
             return Response::html('Not found.', 404);
         }
 
+        $submission->load('files');
+
         return $this->render('teach/submission', [
             'title' => 'Submission',
             'submission' => $submission,
             'assignment' => Assignment::find($submission->assignmentId),
             'student' => User::find($submission->studentId),
-            'files' => $this->submissionFiles($submission->id),
+            'files' => $submission->files,
             'canGrade' => Authorization::canGradeSubmission($this->userId(), $submission->id),
             'errors' => [],
             'flash' => $this->flash(),
@@ -208,9 +211,12 @@ final class TeachRoutes extends Controller
             return Response::html('Not found.', 404);
         }
 
-        $file = $this->findSubmissionFile($fileId, $submission->id);
+        $file = SubmissionFile::query()
+            ->where('id', $fileId)
+            ->where('submission_id', $submission->id)
+            ->first();
 
-        if ($file === null) {
+        if (!$file instanceof SubmissionFile) {
             return Response::html('Not found.', 404);
         }
 
@@ -231,12 +237,14 @@ final class TeachRoutes extends Controller
                 return Response::html('Not found.', 404);
             }
 
+            $submission->load('files');
+
             return $this->render('teach/submission', [
                 'title' => 'Submission',
                 'submission' => $submission,
                 'assignment' => Assignment::find($submission->assignmentId),
                 'student' => User::find($submission->studentId),
-                'files' => $this->submissionFiles($submission->id),
+                'files' => $submission->files,
                 'canGrade' => true,
                 'errors' => $result->errors,
                 'flash' => null,
